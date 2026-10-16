@@ -36,21 +36,18 @@ services:
       dockerfile: Dockerfile
     container_name: shortener-backend
     restart: on-failure
-    depends_on:
-      mysql-db:
-        condition: service_healthy
-      redis-cache:
-        condition: service_healthy
     environment:
-      MYSQL_HOST: mysql-db
-      MYSQL_PORT: 3306
-      MYSQL_DB: url_shortener
-      MYSQL_USER: root
-      MYSQL_PASSWORD: rootpassword
-      REDIS_HOST: redis-cache
-      REDIS_PORT: 6379
-      BASE_URL: http://localhost:8080
-      SPRING_PROFILES_ACTIVE: prod
+      # These environment variables default to empty so Spring Boot's application.properties
+      # (with managed Aiven connection settings) takes effect unless explicitly overridden in a .env file.
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-}
+      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST:-}
+      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT:-}
+      SPRING_REDIS_PASSWORD: ${SPRING_REDIS_PASSWORD:-}
+      SPRING_REDIS_SSL: ${SPRING_REDIS_SSL:-}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
     ports:
       - "8080:8080"
 
