@@ -1,84 +1,134 @@
-# 🔗 SnapLink — Cloud-Native High-Performance URL Shortener
+# 🔗 SnapLink (bauna.xyz) — High-Performance URL Shortener & QR Studio
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-bauna.xyz-6C63FF?style=for-the-badge&logo=vercel&logoColor=white)](https://bauna.xyz)
+[![Backend Status](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://snaplink-backend-3rk3.onrender.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg?logo=openjdk)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
-[![React](https://img.shields.io/badge/React-18.3-blue.svg?logo=react)](https://react.dev/)
+[![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
+[![React 18](https://img.shields.io/badge/React-18.3-blue.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg?logo=vite)](https://vitejs.dev/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker)](https://www.docker.com/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg?logo=mysql)](https://www.mysql.com/)
-[![Redis](https://img.shields.io/badge/Redis-7.0-DC382D.svg?logo=redis)](https://redis.io/)
-[![Firebase Auth](https://img.shields.io/badge/Firebase-Auth-FFCA28.svg?logo=firebase)](https://firebase.google.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Aiven MySQL](https://img.shields.io/badge/MySQL-Aiven%20Cloud%20(SSL)-4479A1.svg?logo=mysql)](https://aiven.io/)
+[![Redis](https://img.shields.io/badge/Redis-Cache--Aside%20(SSL)-DC382D.svg?logo=redis)](https://redis.io/)
+[![Firebase Auth](https://img.shields.io/badge/Firebase-Auth%20(OAuth%202.0)-FFCA28.svg?logo=firebase)](https://firebase.google.com/)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker)](https://www.docker.com/)
 
-**SnapLink** is an enterprise-grade, full-stack URL shortening and link management platform. Built with a high-throughput **Spring Boot 3** backend and a reactive **React / Vite** frontend, it leverages **Redis** as a Cache-Aside layer for sub-millisecond HTTP 302 redirects, **MySQL** for durable link persistence, **Bucket4j** for token-bucket rate limiting, and **Firebase Authentication** for Google and GitHub OAuth.
+> **Live Production URL:** [https://bauna.xyz](https://bauna.xyz)  
+> **API Gateway & Redirection:** [https://bauna.xyz/:shortCode](https://bauna.xyz) → [Render Backend](https://snaplink-backend-3rk3.onrender.com)
+
+**SnapLink** is an enterprise-grade, full-stack URL shortening, link management, and custom QR code platform engineered with **Java 21 / Spring Boot 3**, **React 18 / Vite**, **Aiven Managed MySQL**, and **Redis**. It features zero-CORS edge proxy routing via **Vercel Edge Rewrites**, sub-millisecond HTTP 302 redirects with resilient cache fallback, Google and GitHub OAuth authentication via **Firebase**, and a full-featured **QR Code Studio** for creating high-resolution, branded QR codes.
 
 ---
 
-## 🏗️ System Architecture
+## 🌟 Key Features
+
+### ⚡ Ultra-Short Custom Domain Routing
+- Generates clean, branded short links via our custom domain: `https://bauna.xyz/<alias>`
+- Choose between compact auto-generated Base62 slugs or custom aliases.
+- Configurable link expiration options (`5m`, `1h`, `24h`, `7d`, `30d`, or permanent).
+
+### 🌐 Edge Proxy Architecture (Zero CORS Overhead)
+- Powered by Vercel edge rewrites ([`frontend/vercel.json`](frontend/vercel.json)) matching routes at the network edge.
+- Client SPA pages (`/dashboard`, `/login`, etc.) serve instantaneously from Vercel's global CDN.
+- Short-code slugs (`bauna.xyz/:shortCode`) and API requests (`/api/*`) proxy directly to the Spring Boot backend on Render, returning native HTTP 302 redirects with zero browser-side round trips.
+
+### 🎨 Interactive QR Code Studio
+- In-browser visual QR customizer with real-time constrained preview.
+- **Dot Patterns:** Blocks, Smooth, Circles, Diamond, D.Smooth, Bubbles.
+- **Styling:** Custom corner squares, corner dots, background/foreground hex colors, linear/radial gradients, and logo embedding.
+- **Error Correction:** Adjustable levels (L: 7%, M: 15%, Q: 25%, H: 30% damage tolerance).
+- **High-Res Export:** Direct client-side generation of PNG, JPG, and scalable SVG up to **2048px**.
+
+### 🔐 OAuth 2.0 & Firebase Authentication
+- Seamless social login with **Google** and **GitHub** popup authentication alongside email/password credentials.
+- Client session persistence using Firebase Auth state synchronization with protected dashboard routes.
+
+### 🛡️ Fault-Tolerant Caching & Persistence
+- Low-latency cache layer with **Spring Data Redis (Lettuce)** over SSL/TLS.
+- **Resilient Fallback Design:** All cache operations implement graceful try-catch degradation (`ResilientCacheErrorHandler`). If Redis is unavailable or undergoing maintenance, requests silently fall through to SSL-enforced **Aiven MySQL** without dropping traffic or throwing 500 errors.
+
+### 📊 Link Analytics & Management
+- Real-time visit tracking: click counter, timestamps, client IP address, user agent, and referrer URL.
+- Active/pause link state toggling, password protection, and OpenGraph preview metadata support.
+- In-memory client rate limiting powered by **Bucket4j** (20 requests/minute per client IP) on creation endpoints.
+
+---
+
+## 🏗️ System Architecture & Data Flow
 
 ```mermaid
 flowchart TD
     User["🌐 End User / Browser"]
     
-    subgraph Frontend["Frontend Tier (Vercel / SPA)"]
-        ReactApp["React 18 + Vite SPA"]
-        FirebaseAuth["Firebase Auth (Google & GitHub)"]
-    end
-    
-    subgraph Backend["Backend Tier (Render / Docker)"]
-        SpringApp["Spring Boot 3 REST API"]
-        RateLimiter["Bucket4j Rate Limiter (20 req/min)"]
-        Base62["Base62 Slug Encoder"]
-    end
-    
-    subgraph Data["Database Tier (Aiven Cloud)"]
-        RedisCache[("Redis 7 (SSL/TLS Cache-Aside)")]
-        MySQLDB[("MySQL 8.0 (Persistent Storage)")]
+    subgraph Edge["Vercel Global Edge Network (bauna.xyz)"]
+        EdgeRouter{"Vercel Edge Rewrites\n(vercel.json)"}
+        ReactSPA["React 18 + Vite SPA\n(/login, /dashboard, etc.)"]
     end
 
-    User -->|"Visits UI"| ReactApp
-    ReactApp -->|"OAuth Sign-In"| FirebaseAuth
-    ReactApp -->|"POST /api/v1/urls/shorten"| RateLimiter --> SpringApp
-    User -->|"GET /{shortCode}"| SpringApp
+    subgraph Auth["Identity Provider"]
+        FirebaseAuth["Firebase Auth\n(Google & GitHub OAuth)"]
+    end
+
+    subgraph Backend["Backend Layer (Render / Docker)"]
+        SpringApp["Spring Boot 3 Web Service\n(Java 21 / Eclipse Temurin)"]
+        RateLimiter["Bucket4j Token Bucket\n(20 req/min)"]
+        ErrorHandler["ResilientCacheErrorHandler\n(Graceful Cache Fallback)"]
+    end
+
+    subgraph Storage["Managed Cloud Data (Aiven Cloud)"]
+        RedisCache[("Redis 7 (SSL/TLS)\nCache-Aside Layer")]
+        AivenMySQL[("Aiven MySQL 8.0 (SSL)\nPersistent Storage")]
+    end
+
+    User -->|"Visits bauna.xyz"| EdgeRouter
+    EdgeRouter -->|"SPA Routes: /(login|dashboard|...)"| ReactSPA
+    ReactSPA <-->|"Sign In / Session Sync"| FirebaseAuth
     
-    SpringApp <-->|"1. Check Cache (Sub-ms)"| RedisCache
-    SpringApp <-->|"2. Cache Miss: Fallback Query"| MySQLDB
-    SpringApp -->|"3. Async Analytics Tracking"| MySQLDB
-    SpringApp -->|"Base62 ID Encoding"| Base62
+    EdgeRouter -->|"API: /api/v1/urls/*"| RateLimiter --> SpringApp
+    EdgeRouter -->|"Slug: /:shortCode"| SpringApp
+
+    SpringApp --> ErrorHandler
+    ErrorHandler <-->|"1. Fast Cache Lookup (Sub-ms)"| RedisCache
+    ErrorHandler <-->|"2. Cache Miss or Redis Offline"| AivenMySQL
+    SpringApp -->|"3. Log Click Analytics"| AivenMySQL
+    SpringApp -->|"4. Return HTTP 302 Redirect"| User
 ```
 
 ---
 
-## ✨ Features
+## 🛠️ Tech Stack Details
 
-- **⚡ Sub-Millisecond Redirects:** High-performance HTTP 302 redirects powered by Redis Cache-Aside caching with automatic cache invalidation upon link updates.
-- **✦ Custom Slugs & Collision Prevention:** Generate compact Base62 slugs or define custom branded aliases with atomic collision checks.
-- **▦ Dynamic QR Codes:** Instant client-side QR code generation and download for every shortened link.
-- **◉ Comprehensive Click Analytics:** Detailed access metrics recording total clicks, access timestamps, client IP addresses, user agents, and HTTP referrers.
-- **🛡️ Token-Bucket Rate Limiting:** Endpoint-level protection powered by Bucket4j (20 requests/minute per client IP) on link generation.
-- **🔐 Modern OAuth Authentication:** Seamless sign-in via Google and GitHub powered by Firebase Authentication with persistent session handling.
-- **☁️ Multi-Cloud Deployment Ready:** Pre-configured for deployment across Render (Dockerized backend), Aiven (Managed MySQL + Redis with SSL/TLS), and Vercel (Single Page Application).
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology | Details |
+| Layer | Technologies & Services | Details |
 |---|---|---|
-| **Backend** | Java 21, Spring Boot 3.2.5 | Spring MVC, Spring Data JPA, Hibernate, Bucket4j |
-| **Caching** | Redis 7.0 | Spring Data Redis, Lettuce Client with SSL/TLS |
-| **Database** | MySQL 8.0 | InnoDB, Automatic DDL schema migration via Hibernate |
-| **Frontend** | React 18, Vite 5, React Router 7 | Modern dark-mode UI, custom SVG icons, Canvas QR generation |
-| **Auth** | Firebase Authentication | Google OAuth, GitHub OAuth, Email/Password |
-| **Reverse Proxy** | Nginx Alpine | Production SPA routing & API reverse proxy |
-| **Containers** | Docker & Docker Compose | Multi-stage Eclipse Temurin 21 production builds |
+| **Custom Domain** | `bauna.xyz` via Namecheap DNS | Directed to Vercel edge servers with automatic SSL/TLS |
+| **Frontend** | React 18, Vite 5, Tailwind CSS | Deployed on **Vercel** with edge rewrites, React Router 7, Canvas QR |
+| **Backend** | Java 21, Spring Boot 3.2.5 | Deployed on **Render** (Docker containerized), Spring Data JPA, Bucket4j |
+| **Database** | Aiven for MySQL 8.0 | Managed MySQL with SSL mode (`REQUIRED`), Hibernate DDL auto-updates |
+| **Cache Layer** | Aiven for Redis 7.0 | Lettuce driver with SSL/TLS, Cache-Aside pattern, fault-tolerant fail-open |
+| **Authentication** | Firebase Authentication | Google OAuth, GitHub OAuth, token-based session management |
+| **Containerization** | Docker & Docker Compose | Multi-stage build on `eclipse-temurin:21-jre-jammy` with container memory flags |
 
 ---
 
-## 📡 API Reference
+## 🚦 Edge Routing Rules (`frontend/vercel.json`)
+
+Vercel acts as an intelligent edge reverse proxy, routing traffic according to these prioritized rules:
+
+| Priority | Source Pattern | Target Destination | Purpose |
+|:---:|---|---|---|
+| `1` | `/api/:path*` | `https://snaplink-backend-3rk3.onrender.com/api/:path*` | Proxies API calls directly to Render with no CORS restrictions |
+| `2` | `/(login\|signup\|dashboard\|...)` | `/index.html` | Serves client-side React routes without triggering backend lookups |
+| `3` | `/assets/:path*` | `/assets/:path*` | Serves static JS, CSS, and image bundles from Vite |
+| `4` | `/:shortCode` | `https://snaplink-backend-3rk3.onrender.com/:shortCode` | Proxies short links to Spring Boot for instant HTTP 302 redirection |
+| `5` | `/(.*)` | `/index.html` | Fallback catch-all for SPA navigation |
+
+---
+
+## 📡 REST API Reference
+
+Base Production URL: `https://bauna.xyz/api/v1` (or backend direct: `https://snaplink-backend-3rk3.onrender.com/api/v1`)
 
 ### 1. Shorten a URL
-Creates a shortened URL with an auto-generated or custom alias.
 ```http
 POST /api/v1/urls/shorten
 Content-Type: application/json
@@ -95,21 +145,20 @@ Content-Type: application/json
   "message": "URL shortened",
   "data": {
     "shortCode": "snaplink-repo",
-    "shortUrl": "http://localhost:8080/snaplink-repo",
+    "shortUrl": "https://bauna.xyz/snaplink-repo",
     "originalUrl": "https://github.com/rishabhgjr10/Snaplink"
   },
   "status": 200
 }
 ```
 
-### 2. Redirect to Original URL
-Resolves the short code and redirects the browser.
+### 2. Follow Redirect (HTTP 302)
 ```http
-GET /{shortCode}
+GET /:shortCode
 ```
-**Response:** `HTTP/1.1 302 Found` with `Location: <originalUrl>`
+**Response:** `HTTP/1.1 302 Found` with header `Location: <originalUrl>`
 
-### 3. List All URLs
+### 3. List All Shortened URLs
 ```http
 GET /api/v1/urls
 ```
@@ -121,10 +170,10 @@ GET /api/v1/urls
   "data": [
     {
       "shortCode": "snaplink-repo",
-      "shortUrl": "http://localhost:8080/snaplink-repo",
+      "shortUrl": "https://bauna.xyz/snaplink-repo",
       "originalUrl": "https://github.com/rishabhgjr10/Snaplink",
-      "createdAt": "2026-10-16T14:30:00Z",
-      "totalClicks": 42
+      "createdAt": "2026-10-17T21:00:00Z",
+      "totalClicks": 128
     }
   ],
   "status": 200
@@ -141,12 +190,12 @@ GET /api/v1/urls/{shortCode}/analytics
   "success": true,
   "message": "Analytics fetched",
   "data": {
-    "totalClicks": 42,
+    "totalClicks": 128,
     "recentVisits": [
       {
         "id": 1,
         "shortCode": "snaplink-repo",
-        "accessedAt": "2026-10-16T15:10:00Z",
+        "accessedAt": "2026-10-17T21:45:00Z",
         "ipAddress": "192.168.1.1",
         "userAgent": "Mozilla/5.0 ...",
         "referer": "https://google.com"
@@ -164,7 +213,7 @@ Content-Type: application/json
 
 {
   "originalUrl": "https://new-destination.com",
-  "customAlias": "updated-slug"
+  "customAlias": "new-slug"
 }
 ```
 
@@ -175,14 +224,17 @@ DELETE /api/v1/urls/{shortCode}
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## 💻 Local Development & Setup
 
 ### Prerequisites
-- [Docker & Docker Compose](https://www.docker.com/)
-- [Java 21 JDK](https://adoptium.net/) (for local backend development without Docker)
-- [Node.js 20+](https://nodejs.org/) (for frontend development)
+- [Git](https://git-scm.com/)
+- [Java 21 JDK](https://adoptium.net/) (Eclipse Temurin recommended)
+- [Node.js 20+](https://nodejs.org/) & `npm`
+- [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized local stack)
 
-### Quickstart with Docker Compose
+---
+
+### Method A: Quickstart with Docker Compose
 
 1. **Clone the repository:**
    ```bash
@@ -190,111 +242,135 @@ DELETE /api/v1/urls/{shortCode}
    cd Snaplink
    ```
 
-2. **Start all services:**
+2. **Start the complete stack (MySQL, Redis, Backend, Frontend):**
    ```bash
-   docker-compose up -d
+   docker-compose up --build -d
    ```
 
-3. **Access the application:**
-   - **Frontend UI:** [http://localhost:5173](http://localhost:5173)
-   - **Backend API:** [http://localhost:8080](http://localhost:8080)
-   - **MySQL:** `localhost:3307` (user: `root`, password: `rootpassword`)
-   - **Redis:** `localhost:6379`
+3. **Verify endpoints:**
+   - Frontend UI: `http://localhost:5173`
+   - Backend API: `http://localhost:8080`
+   - MySQL: `localhost:3307` (user: `root`, password: `rootpassword`)
+   - Redis: `localhost:6379`
 
 ---
 
-## ☁️ Cloud Deployment Guide
+### Method B: Native Local Development (Maven + Vite)
 
-SnapLink is engineered to run in a decoupled, cloud-native topology:
+#### 1. Configure Backend (`src/main/resources/application.properties` or `.env`)
+You can use a local MySQL/Redis instance or point to cloud credentials:
+```properties
+# Spring Datasource
+spring.datasource.url=jdbc:mysql://localhost:3306/urlshortener?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=your_mysql_password
 
+# Spring Redis
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.password=
+spring.data.redis.ssl.enabled=false
+
+# App Base Redirect Domain
+app.base-url=http://localhost:8080
+cors.allowed-origins=http://localhost:5173,https://bauna.xyz,https://*.bauna.xyz,https://*.vercel.app
 ```
-┌────────────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
-│     Vercel (SPA)       │ ───> │     Render (Docker)     │ ───> │  Aiven (MySQL + Redis)  │
-│  React 18 / Vite 5     │      │   Java 21 / Spring Boot │      │   Managed Cloud DBs     │
-└────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
+
+Run the Spring Boot application:
+```bash
+./mvnw clean spring-boot:run
+# On Windows:
+mvnw.cmd clean spring-boot:run
 ```
 
-### 1. Database & Cache: Aiven
-1. Create an **Aiven for MySQL** service (database: `defaultdb`, SSL Mode: `REQUIRED`).
-2. (Optional) Create an **Aiven for Redis** service with SSL enabled.
+#### 2. Configure Frontend (`frontend/.env`)
+Create `frontend/.env` using `frontend/.env.example` as a template:
+```env
+# API Gateway Endpoint
+VITE_API_URL=http://localhost:8080
 
-### 2. Backend Web Service: Render
-1. Create a new **Web Service** on [Render](https://render.com) pointing to this repository.
-2. Select **Docker** environment (Render automatically uses the multi-stage [`Dockerfile`](Dockerfile)).
-3. Configure Environment Variables:
-   | Variable | Value | Description |
-   |---|---|---|
-   | `SPRING_DATASOURCE_URL` | `jdbc:mysql://<aiven-host>:<port>/defaultdb?sslMode=REQUIRED` | Aiven MySQL JDBC connection |
-   | `SPRING_DATASOURCE_USERNAME` | `avnadmin` | MySQL username |
-   | `SPRING_DATASOURCE_PASSWORD` | `<your-aiven-mysql-password>` | MySQL password |
-   | `SPRING_REDIS_HOST` | `<your-aiven-redis-host>` | Redis host |
-   | `SPRING_REDIS_PORT` | `<your-aiven-redis-port>` | Redis port |
-   | `SPRING_REDIS_PASSWORD` | `<your-aiven-redis-password>` | Redis password |
-   | `SPRING_REDIS_SSL` | `true` | Enables TLS for Aiven Redis |
-   | `APP_BASE_URL` | `https://<your-render-service>.onrender.com` | Base domain for short link redirects |
-   | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,https://*.vercel.app,https://<your-domain>.vercel.app` | Allowed origins |
-   | `SPRING_PROFILES_ACTIVE` | `prod` | Activates production profile |
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=snapliink.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=snapliink
+VITE_FIREBASE_STORAGE_BUCKET=snapliink.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=1025901795798
+VITE_FIREBASE_APP_ID=1:1025901795798:web:...
+```
 
-### 3. Frontend SPA: Vercel
-1. Import this repository into [Vercel](https://vercel.com).
-2. Set **Root Directory** to `frontend`.
-3. Set Framework Preset to **Vite**.
-4. Configure Environment Variables:
-   | Variable | Value |
-   |---|---|
-   | `VITE_API_URL` | `https://<your-render-service>.onrender.com` |
-   | `VITE_BACKEND_URL` | `https://<your-render-service>.onrender.com` |
-   | `VITE_FIREBASE_API_KEY` | `<your-firebase-api-key>` |
-   | `VITE_FIREBASE_AUTH_DOMAIN` | `<your-project>.firebaseapp.com` |
-   | `VITE_FIREBASE_PROJECT_ID` | `<your-project-id>` |
-   | `VITE_FIREBASE_STORAGE_BUCKET` | `<your-project>.firebasestorage.app` |
-   | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `<your-sender-id>` |
-   | `VITE_FIREBASE_APP_ID` | `<your-app-id>` |
-
-SPA catch-all routing is pre-configured via [`frontend/vercel.json`](frontend/vercel.json).
+Install dependencies and start the Vite dev server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:5173` in your browser.
 
 ---
 
-## 📁 Repository Structure
+## ☁️ Production Deployment Variables
+
+### 1. Render (Backend Docker Web Service)
+| Environment Variable | Recommended Production Value |
+|---|---|
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://<aiven-host>:<port>/defaultdb?sslMode=REQUIRED` |
+| `SPRING_DATASOURCE_USERNAME` | `avnadmin` |
+| `SPRING_DATASOURCE_PASSWORD` | `<your-aiven-mysql-password>` |
+| `SPRING_REDIS_HOST` | `<your-aiven-redis-host>` |
+| `SPRING_REDIS_PORT` | `<your-aiven-redis-port>` |
+| `SPRING_REDIS_PASSWORD` | `<your-aiven-redis-password>` |
+| `SPRING_REDIS_SSL` | `true` |
+| `APP_BASE_URL` | `https://bauna.xyz` |
+| `CORS_ALLOWED_ORIGINS` | `https://bauna.xyz,https://*.bauna.xyz,https://*.vercel.app,http://localhost:5173` |
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+
+### 2. Vercel (Frontend SPA)
+| Environment Variable | Production Value |
+|---|---|
+| `VITE_API_URL` | `https://snaplink-backend-3rk3.onrender.com` |
+| `VITE_FIREBASE_API_KEY` | `<your-firebase-api-key>` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `snapliink.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | `snapliink` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `snapliink.firebasestorage.app` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `1025901795798` |
+| `VITE_FIREBASE_APP_ID` | `<your-firebase-app-id>` |
+
+---
+
+## 📂 Project Structure
 
 ```text
 Snaplink/
-├── .gitignore                     # Production Git ignore rules
-├── Dockerfile                     # Multi-stage Temurin 21 backend Dockerfile
-├── docker-compose.yml             # Local orchestration (MySQL, Redis, Backend, Frontend)
-├── pom.xml                        # Maven dependencies & build configuration
-├── README.md                      # Project documentation
-├── backend/
-│   └── Dockerfile                 # Cloud deployment Dockerfile alias
-├── src/                           # Spring Boot 3 Java source
+├── Dockerfile                         # Production multi-stage Temurin 21 backend build
+├── docker-compose.yml                 # Local dev orchestration (MySQL, Redis, App, UI)
+├── pom.xml                            # Maven dependencies & build configuration
+├── README.md                          # Production architecture documentation
+├── src/                               # Spring Boot 3 Java Backend
 │   ├── main/
 │   │   ├── java/com/example/shortener/
 │   │   │   ├── UrlShortenerApplication.java
-│   │   │   ├── config/            # Redis SSL, Bucket4j RateLimiter, CORS, Async
-│   │   │   ├── controller/        # UrlController (/api/v1/urls), RedirectController (/{code})
-│   │   │   ├── dto/               # Request & Response DTOs
-│   │   │   ├── entity/            # JPA Entities (UrlEntity, UrlAnalytics)
-│   │   │   ├── repository/        # Spring Data JPA Repositories
-│   │   │   ├── service/           # UrlService & Implementation with Cache-Aside
-│   │   │   └── util/              # Base62 encoder & ApiResponse wrapper
+│   │   │   ├── config/                # RedisConfig (SSL), ResilientCacheErrorHandler, CorsConfig, RateLimiterFilter
+│   │   │   ├── controller/            # UrlController (/api/v1/urls), RedirectController (/{shortCode})
+│   │   │   ├── dto/                   # UrlShortenRequest, UrlShortenResponse, AnalyticsDTO
+│   │   │   ├── entity/                # UrlEntity, UrlAnalytics (JPA entities)
+│   │   │   ├── repository/            # UrlRepository, UrlAnalyticsRepository
+│   │   │   ├── service/               # UrlServiceImpl (Cache-Aside + Fail-Open MySQL fallback)
+│   │   │   └── util/                  # Base62Util, ApiResponse wrapper
 │   │   └── resources/
-│   │       ├── application.properties      # Cloud-parameterized configuration
-│   │       └── application-dev.properties  # Dev H2 in-memory profile
-│   └── test/                              # Unit & integration tests
-└── frontend/                      # React 18 + Vite SPA
-    ├── .env.example               # Cloud environment variable reference
-    ├── Dockerfile                 # Multi-stage Node 20 to Nginx Alpine Dockerfile
-    ├── nginx.conf                 # SPA routing & local /api reverse proxy
-    ├── package.json               # Frontend dependencies & scripts
-    ├── vercel.json                # Vercel SPA catch-all rewrites
-    ├── vite.config.js             # Vite development server configuration
+│   │       ├── application.properties # Parameterized production configuration
+│   │       └── application-dev.properties
+│   └── test/                          # Unit & integration tests
+└── frontend/                          # React 18 + Vite SPA
+    ├── .env.example                   # Reference environment configuration
+    ├── package.json                   # Dependencies: Firebase, qr-code-styling, react-router-dom
+    ├── vercel.json                    # Edge proxy & SPA rewrite engine
+    ├── vite.config.js                 # Vite bundler & dev proxy
     └── src/
-        ├── components/            # AnalyticsPanel, EditModal, LinkRow, Logo, QR codes
-        ├── context/               # AuthContext (Firebase Google/GitHub OAuth)
-        ├── layouts/               # MainLayout (NavBar & Footer)
-        ├── lib/                   # firebase.js initialization
-        ├── pages/                 # LandingPage, Dashboard, Login, Signup
-        └── services/              # api.js API client layer
+        ├── components/                # QRCodeModal (Portal Studio), LinkRow, AnalyticsPanel
+        ├── context/                   # AuthContext.jsx (Firebase Google & GitHub OAuth)
+        ├── lib/                       # firebase.js (Firebase Auth client SDK)
+        ├── pages/                     # LandingPage, Dashboard, Login, Signup
+        └── services/                  # api.js (Axios client)
 ```
 
 ---
@@ -310,3 +386,4 @@ This project is licensed under the [MIT License](LICENSE).
 **Rishabh Gurjar**
 - GitHub: [@rishabhgjr10](https://github.com/rishabhgjr10)
 - Repository: [https://github.com/rishabhgjr10/Snaplink](https://github.com/rishabhgjr10/Snaplink)
+- Live Platform: [https://bauna.xyz](https://bauna.xyz)
