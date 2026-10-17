@@ -1,6 +1,22 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://snaplink-backend-3rk3.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(login|signup|dashboard|analytics|settings|features|pricing)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/:shortCode",
+      "destination": "https://snaplink-backend-3rk3.onrender.com/:shortCode"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
