@@ -10,6 +10,8 @@ import com.example.shortener.entity.UrlAnalytics;
 import com.example.shortener.repository.UrlRepository;
 import com.example.shortener.repository.UrlAnalyticsRepository;
 import com.example.shortener.util.Base62Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,8 @@ import java.util.Optional;
 
 @Service
 public class UrlServiceImpl implements UrlService {
+
+    private static final Logger log = LoggerFactory.getLogger(UrlServiceImpl.class);
 
     private final UrlRepository urlRepository;
     private final UrlAnalyticsRepository analyticsRepository;
@@ -52,8 +56,12 @@ public class UrlServiceImpl implements UrlService {
         }
 
         String shortUrl = baseUrl + "/" + shortCode;
-        if (cacheManager.getCache("urlCache") != null) {
-            cacheManager.getCache("urlCache").put(shortCode, request.getOriginalUrl());
+        try {
+            if (cacheManager.getCache("urlCache") != null) {
+                cacheManager.getCache("urlCache").put(shortCode, request.getOriginalUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Redis unavailable during shortenUrl cache put, falling back to DB: {}", e.getMessage());
         }
         return new UrlShortenResponse(shortCode, shortUrl, request.getOriginalUrl());
     }
@@ -92,9 +100,13 @@ public class UrlServiceImpl implements UrlService {
         urlRepository.save(entity);
 
         // Update cache
-        if (cacheManager.getCache("urlCache") != null) {
-            cacheManager.getCache("urlCache").evict(oldCode);
-            cacheManager.getCache("urlCache").put(newCode, entity.getOriginalUrl());
+        try {
+            if (cacheManager.getCache("urlCache") != null) {
+                cacheManager.getCache("urlCache").evict(oldCode);
+                cacheManager.getCache("urlCache").put(newCode, entity.getOriginalUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Redis unavailable during updateUrl cache update, falling back to DB: {}", e.getMessage());
         }
 
         long clicks = analyticsRepository.countByShortCode(newCode);
@@ -107,8 +119,12 @@ public class UrlServiceImpl implements UrlService {
     public void deleteUrl(String shortCode) {
         urlRepository.deleteByShortCode(shortCode);
         analyticsRepository.deleteByShortCode(shortCode);
-        if (cacheManager.getCache("urlCache") != null) {
-            cacheManager.getCache("urlCache").evict(shortCode);
+        try {
+            if (cacheManager.getCache("urlCache") != null) {
+                cacheManager.getCache("urlCache").evict(shortCode);
+            }
+        } catch (Exception e) {
+            log.warn("Redis unavailable during deleteUrl cache evict, falling back to DB: {}", e.getMessage());
         }
     }
 
@@ -122,11 +138,15 @@ public class UrlServiceImpl implements UrlService {
     @Override
     public Optional<String> resolveOriginalUrl(String shortCode) {
         // Try cache first
-        if (cacheManager.getCache("urlCache") != null) {
-            org.springframework.cache.Cache.ValueWrapper wrapper = cacheManager.getCache("urlCache").get(shortCode);
-            if (wrapper != null) {
-                return Optional.ofNullable((String) wrapper.get());
+        try {
+            if (cacheManager.getCache("urlCache") != null) {
+                org.springframework.cache.Cache.ValueWrapper wrapper = cacheManager.getCache("urlCache").get(shortCode);
+                if (wrapper != null) {
+                    return Optional.ofNullable((String) wrapper.get());
+                }
             }
+        } catch (Exception e) {
+            log.warn("Redis unavailable during resolveOriginalUrl cache lookup, falling back to DB: {}", e.getMessage());
         }
         // Fallback to DB
         return urlRepository.findByShortCode(shortCode).map(UrlEntity::getOriginalUrl);
