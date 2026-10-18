@@ -88,9 +88,9 @@ const GLOBAL_CSS = `
 .lrow:hover{background:rgba(255,255,255,0.025)}
 .lrow:last-child{border-bottom:none}
 
-/* ── Ticker ───────────────────────────────────────────────────────────────── */
-.tw{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.ti{display:flex;width:max-content;animation:ticker 40s linear infinite}
+/* ── Glass feature pills ─────────────────────────────────────────────────── */
+.glass-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:9999px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);font-size:13px;font-weight:500;color:rgba(255,255,255,0.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 1px 2px rgba(0,0,0,0.05);transition:all .2s cubic-bezier(.22,1,.36,1);font-family:'DM Mono',monospace;cursor:default}
+.glass-pill:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);transform:translateY(-1px)}
 
 /* ── Feature cards ────────────────────────────────────────────────────────── */
 .fc{background:rgba(255,255,255,0.03);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r-lg);padding:28px;display:flex;flex-direction:column;gap:14px;transition:all .3s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden}

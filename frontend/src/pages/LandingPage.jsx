@@ -99,41 +99,113 @@ function DemoWidget() {
   );
 }
 
-/* ── Static Feature Strip ─────────────────────────────────────────────────── */
-const TICKER_ITEMS = ['Custom slugs', 'QR codes', 'Click analytics', 'OAuth login'];
+/* ── Glassmorphic Feature Pills Row ───────────────────────────────────────── */
+const FEATURE_PILLS = [
+  {
+    label: 'Custom Slugs',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a855f7', flexShrink: 0 }}>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'QR Codes',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ec4899', flexShrink: 0 }}>
+        <rect width="5" height="5" x="3" y="3" rx="1"/>
+        <rect width="5" height="5" x="16" y="3" rx="1"/>
+        <rect width="5" height="5" x="3" y="16" rx="1"/>
+        <path d="M21 16h-3a2 2 0 0 0-2 2v3"/>
+        <path d="M21 21v.01"/>
+        <path d="M12 7v3a2 2 0 0 1-2 2H7"/>
+        <path d="M3 12h.01"/>
+        <path d="M12 3h.01"/>
+        <path d="M12 16v.01"/>
+        <path d="M16 12h1"/>
+        <path d="M21 12v.01"/>
+        <path d="M12 21v-1"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Click Analytics',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#22c55e', flexShrink: 0 }}>
+        <line x1="12" x2="12" y1="20" y2="10"/>
+        <line x1="18" x2="18" y1="20" y2="4"/>
+        <line x1="6" x2="6" y1="20" y2="16"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'OAuth Login',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#eab308', flexShrink: 0 }}>
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+      </svg>
+    ),
+  },
+];
 
-function Ticker() {
+function FeaturePillsRow() {
   return (
     <div
+      className="w-full max-w-4xl mx-auto mt-12 mb-20 flex flex-wrap items-center justify-center gap-3 sm:gap-6 px-4"
       style={{
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        width: '100%',
+        maxWidth: 896,
+        margin: '48px auto 80px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '0 16px',
         position: 'relative',
         zIndex: 10,
-        padding: '24px 20px 8px',
       }}
     >
-      <div
-        className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-white/50 pb-8"
-        style={{ fontFamily: C.mono }}
-      >
-        {TICKER_ITEMS.map((item, i) => (
-          <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            <span>{item}</span>
-            {i < TICKER_ITEMS.length - 1 && (
-              <span
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: '50%',
-                  background: 'rgba(168, 85, 247, 0.5)',
-                  display: 'inline-block',
-                }}
-              />
-            )}
-          </span>
-        ))}
-      </div>
+      {FEATURE_PILLS.map((f) => (
+        <span
+          key={f.label}
+          className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/5 bg-white/[0.03] text-sm font-medium text-white/50 backdrop-blur-sm shadow-sm transition-colors hover:text-white/80 hover:bg-white/[0.05]"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 16px',
+            borderRadius: 9999,
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(255, 255, 255, 0.03)',
+            fontSize: 13.5,
+            fontWeight: 500,
+            color: 'rgba(255, 255, 255, 0.55)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
+            fontFamily: C.mono,
+            cursor: 'default',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.85)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.16)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.55)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+            e.currentTarget.style.transform = 'none';
+          }}
+        >
+          {f.icon}
+          <span>{f.label}</span>
+        </span>
+      ))}
     </div>
   );
 }
@@ -156,7 +228,7 @@ export function LandingPage() {
       <NavBar />
 
       {/* ── Hero ── */}
-      <section style={{ position: 'relative', zIndex: 10, minHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 60px', textAlign: 'center', gap: 28 }}>
+      <section style={{ position: 'relative', zIndex: 10, minHeight: '86vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 30px', textAlign: 'center', gap: 28 }}>
         <Orbs />
         <DotGrid />
         <Vignette />
@@ -261,7 +333,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      <Ticker />
+      {/* ── Floating Glassmorphic Feature Row ── */}
+      <FeaturePillsRow />
 
       {/* ── Features bento ── */}
       <section id="features" style={{ position: 'relative', zIndex: 10, padding: '90px 40px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
