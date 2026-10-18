@@ -311,21 +311,38 @@ export function DashboardPage({ toast }) {
       <AmbientBg />
 
       {/* ── Sidebar ── */}
-      <aside style={{
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: 228, zIndex: 100,
-        background: 'rgba(14,12,26,0.75)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
-        borderRight: '1px solid rgba(255,255,255,0.07)',
-        display: 'flex', flexDirection: 'column',
-      }}>
+      <aside
+        className="w-64 min-w-[16rem] max-w-[16rem] border-r border-white/10 shrink-0"
+        style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          width: 256, minWidth: 256, maxWidth: 256, zIndex: 100,
+          background: 'rgba(14,12,26,0.75)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
+          borderRight: '1px solid rgba(255,255,255,0.1)',
+          display: 'flex', flexDirection: 'column', flexShrink: 0,
+        }}
+      >
         {/* ── sidebar edge glow */}
         <div style={{ position: 'absolute', right: 0, top: '20%', bottom: '20%', width: 1, background: 'linear-gradient(180deg, transparent, rgba(108,99,255,0.35), transparent)' }} />
 
         {/* logo */}
-        <div style={{ padding: '20px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-            <Logo size="sm" withBadge />
-          </Link>
-        </div>
+        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+          <div className="flex flex-col gap-1.5 px-6 py-5 border-b border-white/10" style={{
+            display: 'flex', flexDirection: 'column', gap: 6,
+            padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Logo size="sm" />
+            </div>
+            <span className="text-[11px] font-mono text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full w-fit" style={{
+              fontFamily: C.mono, fontSize: 11, color: 'rgba(192, 132, 252, 0.9)',
+              background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.22)',
+              padding: '2px 8px', borderRadius: 9999, width: 'fit-content', letterSpacing: '.03em',
+              display: 'inline-block'
+            }}>
+              by bauna.xyz
+            </span>
+          </div>
+        </Link>
 
         {/* nav items */}
         <nav style={{ flex: 1, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -336,14 +353,19 @@ export function DashboardPage({ toast }) {
         </nav>
 
         {/* user */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{
+          padding: '16px 20px 24px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          marginTop: 'auto',
+          marginBottom: 8,
+        }}>
           <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
           <button className="btn-g btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={logout}>Logout</button>
         </div>
       </aside>
 
       {/* ── Main column ── */}
-      <div style={{ marginLeft: 228, flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
+      <div className="flex-1 min-w-0" style={{ marginLeft: 256, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
 
         {/* TopBar */}
         <header style={{
@@ -372,7 +394,7 @@ export function DashboardPage({ toast }) {
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, padding: '32px', maxWidth: 1080, width: '100%' }}>
+        <main className="flex-1 min-w-0 px-8 py-6 overflow-y-auto" style={{ flex: 1, minWidth: 0, padding: '24px 32px', maxWidth: 1080, width: '100%', overflowY: 'auto' }}>
 
           {/* ── LINKS TAB ── */}
           {activeTab === 'links' && (

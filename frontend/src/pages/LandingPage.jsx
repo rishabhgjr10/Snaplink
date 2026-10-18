@@ -37,6 +37,7 @@ function Vignette() {
 
 /* ── Demo widget ──────────────────────────────────────────────────────────── */
 function DemoWidget() {
+  const { user } = useAuth();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -83,7 +84,15 @@ function DemoWidget() {
           </button>
         </div>
       )}
-      <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0 }}>Free to use · No sign-up required</p>
+      <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0 }}>
+        {user ? (
+          <span>
+            Logged in as <strong style={{ color: C.text, fontWeight: 500 }}>{user.email}</strong> • Links auto-sync to your account
+          </span>
+        ) : (
+          'Free to use • No sign-up required'
+        )}
+      </p>
     </div>
   );
 }
@@ -94,7 +103,18 @@ const TICKER_ITEMS = ['Custom slugs', 'QR codes', 'Click analytics', 'OAuth logi
 function Ticker() {
   const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
   return (
-    <div style={{ padding: '18px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
+    <div
+      className="pb-8 mb-4"
+      style={{
+        padding: '24px 0 32px',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 10,
+        marginBottom: 16,
+      }}
+    >
       <div className="tw">
         <div className="ti" style={{ gap: 48, alignItems: 'center' }}>
           {items.map((item, i) => (
@@ -135,13 +155,17 @@ export function LandingPage() {
         {/* headline container */}
         <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 840 }}>
           
-          {/* Top Brand Pill (Task 5) */}
-          <div className="su" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.25)',
-            borderRadius: 20, padding: '5px 16px', fontFamily: C.mono, fontSize: 11,
-            color: C.accent, letterSpacing: '.06em',
-          }}>
+          {/* Top Brand Pill */}
+          <div
+            className="su text-purple-300 bg-purple-950/50 border border-purple-500/30 text-xs font-medium px-4 py-1.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.15)]"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(59, 7, 100, 0.5)', border: '1px solid rgba(168, 85, 247, 0.3)',
+              borderRadius: 9999, padding: '6px 16px', fontFamily: C.mono, fontSize: 12,
+              color: '#d8b4fe', letterSpacing: '.06em',
+              boxShadow: '0 0 12px rgba(168,85,247,0.15)',
+            }}
+          >
             ⚡ SnapLink by bauna.xyz • Ultra-Fast URL Shortener
           </div>
 
@@ -201,14 +225,8 @@ export function LandingPage() {
             </a>
           </div>
 
-          {/* Context-Aware Action Buttons (Task 2) */}
-          {user ? (
-            <div className="su d3" style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
-              <Link to="/dashboard" className="btn-p" style={{ padding: '12px 28px', fontSize: 14 }}>
-                Go to Dashboard →
-              </Link>
-            </div>
-          ) : (
+          {/* Action Buttons for Logged-Out Visitors */}
+          {!user && (
             <div className="su d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
               <Link to="/signup" className="btn-p">Get started free →</Link>
               <Link to="/login" className="btn-g">Sign in</Link>
