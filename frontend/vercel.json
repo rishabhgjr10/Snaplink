@@ -5,7 +5,7 @@
       "destination": "https://snaplink-backend-3rk3.onrender.com/api/:path*"
     },
     {
-      "source": "/(robots.txt|sitemap.xml|icon.svg|icon.png|icon-dark.svg|icon-dark.png)",
+      "source": "/(robots.txt|sitemap.xml|icon.svg|icon.png|icon-dark.svg|icon-dark.png|google6a3a31e4b531ed55.html)",
       "destination": "/$1"
     },
     {
