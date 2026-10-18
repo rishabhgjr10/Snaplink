@@ -4,7 +4,7 @@ import { Logo } from '../components/Logo';
 import { Footer } from '../layouts/MainLayout';
 
 const SECTIONS = [
-  { title: '1. Acceptance', body: 'By accessing or using URL Baunafier ("the Service") you agree to be bound by these Terms. If you do not agree, do not use the Service.' },
+  { title: '1. Acceptance', body: 'By accessing or using SnapLink at bauna.xyz ("the Service") you agree to be bound by these Terms. If you do not agree, do not use the Service.' },
   { title: '2. Eligibility', body: 'You must be at least 13 years old to use the Service. By using it you represent that you meet this requirement.' },
   { title: '3. Acceptable use', body: 'You may use the Service only for lawful purposes. You must not create shortened links that point to: spam, phishing pages, malware, illegal content, content that violates intellectual-property rights, or any material that could expose the operator to legal liability. Automated bulk link creation without prior written permission is prohibited.' },
   { title: '4. Account responsibility', body: 'You are responsible for all activity that occurs under your account. Keep your credentials secure. Notify dhakad.kumawat18@gmail.com immediately if you suspect unauthorised access.' },

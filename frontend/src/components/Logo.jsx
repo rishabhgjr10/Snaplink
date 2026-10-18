@@ -19,6 +19,7 @@ function BaunaMarkSVG({ height = 32, color = '#6C63FF' }) {
       fill="none"
       aria-hidden="true"
       className="bauna-mark"
+      style={{ flexShrink: 0 }}
     >
       {LOGO_PATHS.map((d, i) => (
         <path
@@ -36,17 +37,39 @@ function BaunaMarkSVG({ height = 32, color = '#6C63FF' }) {
   );
 }
 
-export function Logo({ size = 'lg' }) {
+export function Logo({ size = 'lg', withBadge = false }) {
   const isLg = size === 'lg';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: isLg ? 12 : 7, userSelect: 'none' }}>
-      <BaunaMarkSVG height={isLg ? 54 : 27} />
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: isLg ? 12 : 8, userSelect: 'none' }}>
+      <BaunaMarkSVG height={isLg ? 54 : 26} />
       <span style={{
         fontFamily: C.display, fontWeight: 800,
         fontSize: isLg ? 40 : 20,
         color: C.text, letterSpacing: '-0.03em', lineHeight: 1,
         animation: isLg ? 'baunaText .6s .45s cubic-bezier(.22,1,.36,1) both' : undefined,
       }}>SnapLink</span>
+      {withBadge && (
+        <span
+          className="text-xs font-mono text-purple-400/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full ml-2"
+          style={{
+            fontFamily: C.mono,
+            fontSize: 11,
+            color: 'rgba(192, 132, 252, 0.9)',
+            background: 'rgba(168, 85, 247, 0.1)',
+            border: '1px solid rgba(168, 85, 247, 0.22)',
+            padding: '2px 8px',
+            borderRadius: 9999,
+            marginLeft: 6,
+            letterSpacing: '.03em',
+            display: 'inline-flex',
+            alignItems: 'center',
+            lineHeight: 1.3,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          by bauna.xyz
+        </span>
+      )}
     </div>
   );
 }

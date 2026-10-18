@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { C } from '../constants/theme';
+import { Logo } from '../components/Logo';
 import { listLinks, shortenUrl, listQRCodes, createQRCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { QRButton } from '../components/QRButton';
@@ -319,13 +321,10 @@ export function DashboardPage({ toast }) {
         <div style={{ position: 'absolute', right: 0, top: '20%', bottom: '20%', width: 1, background: 'linear-gradient(180deg, transparent, rgba(108,99,255,0.35), transparent)' }} />
 
         {/* logo */}
-        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="28" height="28" viewBox="0 0 60 60" fill="none" className="bauna-mark">
-            <rect width="60" height="60" rx="12" fill="rgba(108,99,255,0.15)"/>
-            <path d="M38 18c2 0 3.5 1.5 3.5 3.5 0 1-.5 1.8-1 2.5l-3.5 5c-1.5 2-1.5 2.8.5 4.5l3.5 3c3.5 2.8 6.5 6 6.5 10 0 3.5-2 6.5-5 8s-6 3-9 1.5l-4-2.5c-2.5-2-4.5-4.5-7-6.5l-2-2.5 2.5-4 2.5 2c3 4 6 7.5 9.5 9.5 2 1.5 4 2 5.5 1 1.5-.7 2.5-2 2.5-3.5 0-2.5-2.5-5.5-5-7.5l-4-3c-2-1.5-3-3-3-5 0-1.5 1-3 2-4.5l-1 .5c-.5-.5-1-1-1.5-1.5 1.5-2 2.5-3.5 5-4z" fill="#6C63FF"/>
-            <path d="M22 12c.7 0 2.5 0 3.5.5 4 .5 6.5 3 9 5.5 4 4 7 8 10 12.5l-2.5 3.5-2.5-3c-1.5-2-3-4-4.5-6-2.5-3.5-5.5-7-8.5-9.5-1.5-1.5-3-2.5-5-2.5-1.5 0-3 .7-4 2-1.5 2-1.5 5 0 7 1.5 2.5 4 4.5 6 6.5l4.5 4c1.5 1.5 3 3 3.5 5 1.5 4-1.5 7-3.5 10l.5-.5 1.5 2.5-2.5 3.5c-1.5-.5-2.5-1.5-3-3s0-3.5.5-5l-4.5-4.5c-3.5-3-7-5.5-9.5-9.5-1.5-2.5-2.5-5-2.5-8 0-3 1-6 3-8 2.5-2 5-3.5 8.5-4z" fill="#6C63FF" opacity=".7"/>
-          </svg>
-          <span style={{ fontFamily: C.display, fontWeight: 800, fontSize: 16, color: C.text, letterSpacing: '-0.02em' }}>Baunafier</span>
+        <div style={{ padding: '20px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+            <Logo size="sm" withBadge />
+          </Link>
         </div>
 
         {/* nav items */}

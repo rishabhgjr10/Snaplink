@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { GrainBg } from '../components/GrainBg';
-import { Logo } from '../components/Logo';
-import { Footer } from '../layouts/MainLayout';
-import { NavBar } from '../layouts/MainLayout';
+import { Footer, NavBar } from '../layouts/MainLayout';
 import { shortenUrl } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 /* ── Orb blobs for hero depth ─────────────────────────────────────────────── */
 function Orbs() {
@@ -36,27 +35,6 @@ function Vignette() {
   return <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3, background: 'radial-gradient(ellipse 100% 100% at 50% 0%, transparent 40%, rgba(7,6,15,0.7) 100%)' }} />;
 }
 
-/* ── Floating hero card ───────────────────────────────────────────────────── */
-function HeroCard({ style, children }) {
-  return (
-    <div style={{
-      position: 'absolute',
-      background: 'rgba(255,255,255,0.04)',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255,255,255,0.09)',
-      borderRadius: 14,
-      padding: '14px 18px',
-      fontFamily: C.mono,
-      fontSize: 12,
-      color: C.text,
-      pointerEvents: 'none',
-      whiteSpace: 'nowrap',
-      ...style,
-    }}>{children}</div>
-  );
-}
-
 /* ── Demo widget ──────────────────────────────────────────────────────────── */
 function DemoWidget() {
   const [url, setUrl] = useState('');
@@ -79,7 +57,7 @@ function DemoWidget() {
   }
 
   return (
-    <div className="su d4" style={{ width: '100%', maxWidth: 560, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="su d4" style={{ width: '100%', maxWidth: 580, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <form onSubmit={handleShorten} style={{ display: 'flex', gap: 10 }}>
         <input
           className="inp"
@@ -141,40 +119,103 @@ const FEATURES = [
 
 /* ── Main Page ────────────────────────────────────────────────────────────── */
 export function LandingPage() {
+  const { user } = useAuth();
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.bg, position: 'relative' }}>
       <GrainBg />
       <NavBar />
 
       {/* ── Hero ── */}
-      <section style={{ position: 'relative', zIndex: 10, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px', textAlign: 'center', gap: 32 }}>
+      <section style={{ position: 'relative', zIndex: 10, minHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 60px', textAlign: 'center', gap: 28 }}>
         <Orbs />
         <DotGrid />
         <Vignette />
 
-        {/* floating cards removed — no fake stats in MVP */}
-
-        {/* headline */}
-        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <div className="su" style={{ display: 'inline-block', background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.22)', borderRadius: 20, padding: '4px 14px', fontFamily: C.mono, fontSize: 11, color: C.accent, letterSpacing: '.06em' }}>
-            Powered by Spring Boot &amp; Redis · Lightning-fast redirects
+        {/* headline container */}
+        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 840 }}>
+          
+          {/* Top Brand Pill (Task 5) */}
+          <div className="su" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.25)',
+            borderRadius: 20, padding: '5px 16px', fontFamily: C.mono, fontSize: 11,
+            color: C.accent, letterSpacing: '.06em',
+          }}>
+            ⚡ SnapLink by bauna.xyz • Ultra-Fast URL Shortener
           </div>
+
+          {/* Main Title */}
           <h1 className="su d1" style={{
-            fontSize: 'clamp(3rem,7vw,5.5rem)', fontFamily: C.display, fontWeight: 800,
-            color: C.text, lineHeight: 1.0, letterSpacing: '-0.04em', margin: 0,
+            fontSize: 'clamp(2.75rem,6.5vw,5.2rem)', fontFamily: C.display, fontWeight: 800,
+            color: C.text, lineHeight: 1.05, letterSpacing: '-0.04em', margin: 0,
           }}>
             Shorten. Track.{' '}
             <span style={{ background: 'linear-gradient(135deg, #6C63FF 0%, #FF63B8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               Launch.
             </span>
           </h1>
-          <p className="su d2" style={{ fontFamily: C.space, fontSize: 17, color: C.muted, lineHeight: 1.7, maxWidth: 520 }}>
-            A fast, free URL shortener. Custom slugs, click analytics, QR codes, and OAuth login — powered by Spring Boot & Redis.
+
+          {/* Subtitle */}
+          <p className="su d2" style={{ fontFamily: C.space, fontSize: 17, color: C.muted, lineHeight: 1.7, maxWidth: 540, margin: '0 auto' }}>
+            A fast, free URL shortener. Custom slugs, click analytics, QR codes, and OAuth login — powered by Spring Boot &amp; Redis.
           </p>
-          <div className="su d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link to="/signup" className="btn-p">Get started free →</Link>
-            <Link to="/login" className="btn-g">Sign in</Link>
+
+          {/* 100% Free & Open Source + GitHub Star Button (Task 6) */}
+          <div className="su d2" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(164,246,112,0.08)', border: '1px solid rgba(164,246,112,0.22)',
+              color: '#A4F670', fontFamily: C.mono, fontSize: 12, fontWeight: 600,
+              padding: '6px 14px', borderRadius: 9999,
+            }}>
+              ✨ 100% Free &amp; Open Source
+            </span>
+            <a
+              href="https://github.com/rishabhgjr10/Snaplink"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium px-4 py-1.5 rounded-full flex items-center gap-2 transition-all duration-200"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 9999, padding: '6px 16px', color: C.text,
+                fontFamily: C.mono, fontSize: 12, textDecoration: 'none',
+                transition: 'all .2s cubic-bezier(.22,1,.36,1)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                e.currentTarget.style.boxShadow = '0 0 20px rgba(108,99,255,0.25)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>Star on GitHub ↗</span>
+            </a>
           </div>
+
+          {/* Context-Aware Action Buttons (Task 2) */}
+          {user ? (
+            <div className="su d3" style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
+              <Link to="/dashboard" className="btn-p" style={{ padding: '12px 28px', fontSize: 14 }}>
+                Go to Dashboard →
+              </Link>
+            </div>
+          ) : (
+            <div className="su d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+              <Link to="/signup" className="btn-p">Get started free →</Link>
+              <Link to="/login" className="btn-g">Sign in</Link>
+            </div>
+          )}
+
+          {/* Direct URL Shortening Input */}
           <DemoWidget />
         </div>
       </section>
@@ -182,13 +223,13 @@ export function LandingPage() {
       <Ticker />
 
       {/* ── Features bento ── */}
-      <section id="features" style={{ position: 'relative', zIndex: 10, padding: '100px 40px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-        <div className="su" style={{ textAlign: 'center', marginBottom: 56 }}>
+      <section id="features" style={{ position: 'relative', zIndex: 10, padding: '90px 40px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <div className="su" style={{ textAlign: 'center', marginBottom: 50 }}>
           <h2 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 'clamp(2rem,4vw,3rem)', color: C.text, letterSpacing: '-0.03em', marginBottom: 12 }}>
             Everything you need
           </h2>
           <p style={{ fontFamily: C.space, fontSize: 16, color: C.muted }}>
-            Every feature you'd expect — and a few you didn't.
+            Essential link tools engineered for speed and reliability.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, gridAutoRows: 'auto' }}>
@@ -202,22 +243,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section id="pricing" style={{ position: 'relative', zIndex: 10, padding: '80px 40px 100px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        <h2 className="su" style={{ fontFamily: C.display, fontWeight: 800, fontSize: 'clamp(2rem,4vw,3rem)', color: C.text, letterSpacing: '-0.03em' }}>
-          Free. Forever. Open source.
-        </h2>
-        <p className="su d1" style={{ fontFamily: C.space, fontSize: 16, color: C.muted, maxWidth: 440 }}>
-          Self-hosted on Spring Boot + MySQL + Redis. No per-click fees, no lock-in.
-        </p>
-        <div className="su d2" style={{ display: 'flex', gap: 12 }}>
-          <Link to="/signup" className="btn-p">Create free account →</Link>
-          <a href="https://github.com/rishabhgjr10/Snaplink" target="_blank" rel="noreferrer" className="btn-g">View on GitHub ↗</a>
-        </div>
-      </section>
+      {/* Bottom open-source CTA section removed per Task 7 (now proudly presented in Hero) */}
 
       <Footer />
     </div>
   );
 }
-

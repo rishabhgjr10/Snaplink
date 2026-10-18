@@ -4,7 +4,7 @@ import { Logo } from '../components/Logo';
 import { Footer } from '../layouts/MainLayout';
 
 const SECTIONS = [
-  { title: '1. Who we are', body: 'URL Baunafier is a personal URL-shortening service operated by Dhakad Kumawat (dhakad.kumawat18@gmail.com) and accessible at baunafier.qzz.io. By using the service you agree to this policy.' },
+  { title: '1. Who we are', body: 'SnapLink is a high-performance URL shortening and link management platform accessible at bauna.xyz. By using the service you agree to this policy.' },
   { title: '2. Information we collect', body: 'Account data: your email address and a salted PBKDF2 hash of your password (we never see your plaintext password). Link data: the original URL you submit and the alias/code we assign. Analytics: for every click on a shortened link we store the country, device type, browser family, operating system, and HTTP referrer. No cookies or fingerprints are used for tracking visitors; analytics are associated with links, not visitors.' },
   { title: '3. Google Sign-In', body: "If you choose to sign in with Google, we receive your Google account email address and an opaque identifier from Google. We do not receive your Google password, contacts, or any other Google data. The credential is verified against Google's token endpoint and then treated identically to an email/password account." },
   { title: '4. How we use your data', body: 'We use your email solely to identify your account and for service communications (e.g. password reset, if implemented). Analytics data is used only to power the per-link analytics dashboard visible to you and administrators. We do not sell, share, or transfer your data to any third party except as required by law.' },

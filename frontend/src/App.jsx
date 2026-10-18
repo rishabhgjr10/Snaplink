@@ -131,6 +131,11 @@ input::placeholder{color:${C.muted}}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 200px ${C.bg} inset !important;-webkit-text-fill-color:${C.text} !important;caret-color:${C.text};transition:background-color 5000s ease-in-out 0s !important}
 @media(max-width:1100px){.fc-wrap{display:none}}
 @media(max-width:700px){.lrow{grid-template-columns:90px 1fr auto auto !important}}
+@media(max-width:640px){
+  .nav-user-email{display:none !important}
+  .nav-wrap{padding:0 16px !important}
+  .logo-badge{display:none !important}
+}
 `;
 
 export default function App() {
