@@ -37,7 +37,7 @@ function Vignette() {
 
 /* ── Demo widget ──────────────────────────────────────────────────────────── */
 function DemoWidget() {
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -84,11 +84,13 @@ function DemoWidget() {
           </button>
         </div>
       )}
-      <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0 }}>
-        {user ? (
+      <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0, minHeight: 18 }}>
+        {user?.email ? (
           <span>
             Logged in as <strong style={{ color: C.text, fontWeight: 500 }}>{user.email}</strong> • Links auto-sync to your account
           </span>
+        ) : isAuthLoading ? (
+          <span style={{ opacity: 0 }}>Free to use · No sign-up required</span>
         ) : (
           'Free to use • No sign-up required'
         )}
@@ -97,33 +99,40 @@ function DemoWidget() {
   );
 }
 
-/* ── Ticker ───────────────────────────────────────────────────────────────── */
+/* ── Static Feature Strip ─────────────────────────────────────────────────── */
 const TICKER_ITEMS = ['Custom slugs', 'QR codes', 'Click analytics', 'OAuth login'];
 
 function Ticker() {
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
   return (
     <div
-      className="pb-8 mb-4"
       style={{
-        padding: '24px 0 32px',
         borderTop: '1px solid rgba(255,255,255,0.05)',
         borderBottom: '1px solid rgba(255,255,255,0.05)',
-        overflow: 'hidden',
         position: 'relative',
         zIndex: 10,
-        marginBottom: 16,
+        padding: '24px 20px 8px',
       }}
     >
-      <div className="tw">
-        <div className="ti" style={{ gap: 48, alignItems: 'center' }}>
-          {items.map((item, i) => (
-            <span key={i} style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, letterSpacing: '.05em', display: 'flex', alignItems: 'center', gap: 14 }}>
-              {item}
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(108,99,255,0.5)' }} />
-            </span>
-          ))}
-        </div>
+      <div
+        className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-white/50 pb-8"
+        style={{ fontFamily: C.mono }}
+      >
+        {TICKER_ITEMS.map((item, i) => (
+          <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <span>{item}</span>
+            {i < TICKER_ITEMS.length - 1 && (
+              <span
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: '50%',
+                  background: 'rgba(168, 85, 247, 0.5)',
+                  display: 'inline-block',
+                }}
+              />
+            )}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -139,7 +148,7 @@ const FEATURES = [
 
 /* ── Main Page ────────────────────────────────────────────────────────────── */
 export function LandingPage() {
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: C.bg, position: 'relative' }}>
@@ -225,11 +234,25 @@ export function LandingPage() {
             </a>
           </div>
 
-          {/* Action Buttons for Logged-Out Visitors */}
+          {/* Action Buttons for Logged-Out Visitors (Fixed min-height preserves layout while loading) */}
           {!user && (
-            <div className="su d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
-              <Link to="/signup" className="btn-p">Get started free →</Link>
-              <Link to="/login" className="btn-g">Sign in</Link>
+            <div
+              className="su d3 min-h-[44px] flex items-center justify-center"
+              style={{
+                minHeight: 44,
+                display: 'flex',
+                gap: 12,
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                marginTop: 4,
+              }}
+            >
+              {!isAuthLoading && !user && (
+                <>
+                  <Link to="/signup" className="btn-p">Get started free →</Link>
+                  <Link to="/login" className="btn-g">Sign in</Link>
+                </>
+              )}
             </div>
           )}
 

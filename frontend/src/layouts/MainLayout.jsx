@@ -5,7 +5,7 @@ import { Logo } from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
 
 export function NavBar({ toast }) {
-  const { user, logout } = useAuth();
+  const { user, isAuthLoading, logout } = useAuth();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
@@ -38,23 +38,25 @@ export function NavBar({ toast }) {
       </Link>
 
       {/* ── Auth Actions (Features/Analytics/Pricing removed) ── */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', minHeight: 34 }}>
         {user?.role === 'admin' && (
           <Link to="/v1/admin" className="btn-g btn-sm" style={{ fontFamily: C.mono, fontSize: 11, color: C.accent }}>admin</Link>
         )}
         {user ? (
           <>
-            <span
-              className="nav-user-email"
-              style={{
-                fontFamily: C.mono, fontSize: 12, color: C.muted,
-                maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                display: 'inline-block',
-              }}
-              title={user.email}
-            >
-              {user.email}
-            </span>
+            {user.email && (
+              <span
+                className="nav-user-email"
+                style={{
+                  fontFamily: C.mono, fontSize: 12, color: C.muted,
+                  maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  display: 'inline-block',
+                }}
+                title={user.email}
+              >
+                {user.email}
+              </span>
+            )}
             <Link to="/dashboard" className="btn-p btn-sm" style={{ textDecoration: 'none', padding: '7px 16px' }}>
               Dashboard →
             </Link>
@@ -63,10 +65,12 @@ export function NavBar({ toast }) {
             </button>
           </>
         ) : (
-          <>
-            <Link to="/login" className="btn-g btn-sm">Sign in</Link>
-            <Link to="/signup" className="btn-p btn-sm">Get started free →</Link>
-          </>
+          !isAuthLoading && (
+            <>
+              <Link to="/login" className="btn-g btn-sm">Sign in</Link>
+              <Link to="/signup" className="btn-p btn-sm">Get started free →</Link>
+            </>
+          )
         )}
       </div>
     </nav>

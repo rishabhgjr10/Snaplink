@@ -12,7 +12,16 @@ import { auth, googleProvider, githubProvider } from '../lib/firebase';
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      if (saved) return JSON.parse(saved);
+      if (localStorage.getItem('token')) return { role: 'user' };
+      return null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true); // true while Firebase resolves initial state
 
@@ -23,17 +32,20 @@ export function AuthProvider({ children }) {
         const idToken = await firebaseUser.getIdToken();
         setToken(idToken);
         localStorage.setItem('token', idToken);
-        setUser({
+        const userData = {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
           uid: firebaseUser.uid,
           role: 'user',
-        });
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
       } else {
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
       setLoading(false);
     });
@@ -74,13 +86,16 @@ export function AuthProvider({ children }) {
   // Legacy compat — some components call login(token, userObj) directly.
   const login = useCallback((t, u) => {
     localStorage.setItem('token', t);
+    if (u) {
+      localStorage.setItem('user', JSON.stringify(u));
+    }
     setToken(t);
     setUser(u);
   }, []);
 
   return (
     <AuthContext.Provider value={{
-      token, user, loading,
+      token, user, loading, isAuthLoading: loading,
       login, logout,
       loginWithEmail, signupWithEmail,
       loginWithGoogle, loginWithGithub,
