@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /v1/admin
+
+Sitemap: https://bauna.xyz/sitemap.xml
