@@ -12,6 +12,8 @@ import { QRBulkPanel } from '../components/QRBulkPanel';
 import { QRBatch } from '../components/QRBatch';
 import { QRDecodePanel } from '../components/QRDecodePanel';
 import { AnalyticsPanel } from '../components/AnalyticsPanel';
+import { BackendStatusBanner, BackendStatusPill } from '../components/BackendStatus';
+import { useBackendStatus, wakeBackend, waitForBackend } from '../hooks/useBackendStatus';
 
 /* ── Count-up hook ────────────────────────────────────────────────────────── */
 function useCount(target, ms = 1100) {
@@ -90,12 +92,18 @@ function CreatePanel({ token, toast, onCreated, onClose }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const [shortening, setShortening] = useState(false);
   const [result, setResult] = useState(null);
+  const backend = useBackendStatus();
 
   async function handleShorten(e) {
     e.preventDefault();
     if (!url.trim()) { toast('Enter a URL.', 'error'); return; }
     setShortening(true);
     try {
+      // Render may still be cold-starting: wait for the health check instead of letting the request hang.
+      if (backend.status !== 'up' && !(await waitForBackend())) {
+        toast('Server is not responding. Please retry in a moment.', 'error');
+        return;
+      }
       const result = await shortenUrl({ url: url.trim(), alias: alias.trim() || undefined });
       setResult(result);
       toast('Link created!', 'success');
@@ -131,6 +139,7 @@ function CreatePanel({ token, toast, onCreated, onClose }) {
 
         {/* body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {!result && <BackendStatusBanner />}
           {result ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', paddingTop: 40, textAlign: 'center', animation: 'fadeUp .3s both' }}>
               <div style={{ fontSize: 48 }}>✦</div>
@@ -186,7 +195,9 @@ function CreatePanel({ token, toast, onCreated, onClose }) {
               )}
 
               <button type="submit" className="btn-p" disabled={shortening} style={{ marginTop: 4 }}>
-                {shortening ? 'Shortening…' : 'Create short link ✦'}
+                {shortening
+                  ? (backend.status === 'up' ? 'Shortening…' : 'Waiting for server…')
+                  : 'Create short link ✦'}
               </button>
             </form>
           )}
@@ -293,7 +304,11 @@ export function DashboardPage({ toast }) {
     finally { setLoadingQR(false); }
   }, [token]);
 
+  // Wake the Render backend; re-fetch links once a cold start finishes so the list isn't stuck empty.
+  const backend = useBackendStatus();
+  useEffect(() => { wakeBackend(); }, []);
   useEffect(() => { fetchLinks(); }, [fetchLinks]);
+  useEffect(() => { if (backend.status === 'up' && backend.wasCold) fetchLinks(); }, [backend.status, backend.wasCold, fetchLinks]);
   useEffect(() => { if (activeTab === 'qr') fetchQRCodes(); }, [activeTab, fetchQRCodes]);
 
   const filteredLinks = links.filter(l =>
@@ -383,7 +398,8 @@ export function DashboardPage({ toast }) {
               {activeTab === 'settings' && 'Settings'}
             </h1>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <BackendStatusPill />
             {activeTab === 'links' && (
               <button className="btn-p btn-sm" onClick={() => setShowCreate(true)}>+ New link</button>
             )}
@@ -395,6 +411,9 @@ export function DashboardPage({ toast }) {
 
         {/* Page content */}
         <main className="flex-1 min-w-0 px-8 py-6 overflow-y-auto" style={{ flex: 1, minWidth: 0, padding: '24px 32px', maxWidth: 1080, width: '100%', overflowY: 'auto' }}>
+
+          {/* Render cold-start notice (only shown when the server is slow to answer) */}
+          {!showCreate && <div style={{ marginBottom: 20 }}><BackendStatusBanner /></div>}
 
           {/* ── LINKS TAB ── */}
           {activeTab === 'links' && (

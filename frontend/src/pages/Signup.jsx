@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { wakeBackend } from '../hooks/useBackendStatus';
 import { Link, useNavigate } from 'react-router-dom';
 import { C, primaryBtn } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +7,8 @@ import { AuthCard, InputField } from '../components/AuthCard';
 
 export function SignupPage({ toast }) {
   const { signupWithEmail, loginWithGoogle, loginWithGithub } = useAuth();
+  // Start waking the (possibly sleeping) Render backend while the user signs up.
+  useEffect(() => { wakeBackend(); }, []);
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

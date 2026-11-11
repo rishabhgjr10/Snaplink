@@ -29,6 +29,7 @@ const GLOBAL_CSS = `
 @keyframes baunaText  { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
 @keyframes spinSlow   { from { transform:rotate(0); } to { transform:rotate(360deg); } }
 @keyframes shimmerBtn { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
+@keyframes statusPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.8); } }
 @keyframes pulse      { 0%,100% { opacity:.5; } 50% { opacity:.8; } }
 @keyframes ticker     { from { transform:translateX(0); } to { transform:translateX(-50%); } }
 @keyframes floatA     { 0%,100%{transform:translate(0,0)} 40%{transform:translate(50px,-40px)} 70%{transform:translate(-25px,30px)} }
