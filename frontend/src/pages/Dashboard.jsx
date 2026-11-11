@@ -114,7 +114,8 @@ function CreatePanel({ token, toast, onCreated, onClose }) {
       onCreated();
     } catch (err) {
       const status = err.status;
-      if (status === 409) toast('That alias is already taken. Try another.', 'error');
+      if (err.unavailable) toast(err.message, 'error');
+      else if (status === 409) toast('That alias is already taken. Try another.', 'error');
       else if (status === 429) toast('Rate limit reached. Please wait and try again.', 'error');
       else toast(err.message || 'Could not shorten.', 'error');
     }

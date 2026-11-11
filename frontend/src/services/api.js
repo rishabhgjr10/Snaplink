@@ -20,11 +20,36 @@ export function normalizeLink(d) {
   };
 }
 
+// ── Response helpers ─────────────────────────────────────────────────────────
+// Render's proxy (e.g. while the free instance is hibernating) and Vercel can
+// answer with plain text or HTML, so never assume the body is JSON.
+
+export const SERVER_UNAVAILABLE_MSG =
+  'Server is starting up or temporarily unavailable. Please try again in a minute.';
+
+/** Parsed JSON body, or null if the response wasn't JSON. */
+async function readJson(r) {
+  const text = await r.text().catch(() => '');
+  if (!text) return {};
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+/** Error carrying the HTTP status; `unavailable` marks non-API (proxy/hosting) failures. */
+function apiError(r, body, fallback) {
+  const unavailable = body === null || r.status === 502 || r.status === 503 || r.status === 504;
+  const msg = unavailable ? SERVER_UNAVAILABLE_MSG : (body?.message || body?.error || fallback);
+  const err = new Error(msg);
+  err.status = r.status;
+  err.unavailable = unavailable;
+  return err;
+}
+
 // ── Short Links ──────────────────────────────────────────────────────────────
 
 export async function listLinks() {
   const r = await fetch(`${API}/api/v1/urls`);
-  const body = await r.json();
+  const body = await readJson(r);
+  if (!r.ok || body === null) throw apiError(r, body, 'Could not load links.');
   const raw = Array.isArray(body.data) ? body.data : (Array.isArray(body) ? body : []);
   return raw.map(normalizeLink);
 }
@@ -37,13 +62,8 @@ export async function shortenUrl({ url, alias }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const body = await r.json();
-  if (!r.ok) {
-    const msg = body?.message || body?.error || 'Could not shorten URL.';
-    const err = new Error(msg);
-    err.status = r.status;
-    throw err;
-  }
+  const body = await readJson(r);
+  if (!r.ok || body === null) throw apiError(r, body, 'Could not shorten URL.');
   const d = body.data ?? body;
   const code = d.shortCode ?? d.code;
   return {
@@ -59,7 +79,8 @@ export async function updateLink(code, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ originalUrl: data.original_url ?? data.originalUrl }),
   });
-  const body = await r.json();
+  const body = await readJson(r);
+  if (body === null) return { ok: false, status: r.status, data: { error: SERVER_UNAVAILABLE_MSG } };
   return { ok: r.ok, status: r.status, data: normalizeLink(body.data ?? body) };
 }
 
@@ -70,7 +91,8 @@ export async function deleteLink(code) {
 
 export async function getStats(code) {
   const r = await fetch(`${API}/api/v1/urls/${encodeURIComponent(code)}/analytics`);
-  const body = await r.json();
+  const body = await readJson(r);
+  if (!r.ok || body === null) throw apiError(r, body, 'Could not load analytics.');
   const d = body.data ?? body;
   return {
     clicks:      d.totalClicks ?? 0,

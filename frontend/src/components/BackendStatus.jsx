@@ -57,7 +57,7 @@ export function BackendStatusPill() {
 
 /** Banner explaining the Render cold start, with a live timer. */
 export function BackendStatusBanner() {
-  const { status, startedAt, readyAt, wasCold } = useBackendStatus();
+  const { status, reason, startedAt, readyAt, wasCold } = useBackendStatus();
   const waking = status === 'waking';
   const elapsed = useElapsed(startedAt, waking);
   const [showReady, setShowReady] = useState(false);
@@ -104,7 +104,9 @@ export function BackendStatusBanner() {
         <div style={{ fontFamily: C.mono, fontSize: 11.5, color: C.muted, marginTop: 3 }}>
           {waking && `Our backend sleeps when idle and takes up to a minute to start. ${elapsed}s elapsed — you can fill in your link meanwhile.`}
           {status === 'up' && (tookS != null ? `Server was ready in ${tookS}s. You can shorten links now.` : 'You can shorten links now.')}
-          {status === 'down' && 'The server did not respond after several attempts.'}
+          {status === 'down' && (reason === 'rate-limited'
+            ? 'Our host is temporarily limiting start-ups. Please try again in a few minutes.'
+            : 'The server did not respond after several attempts.')}
         </div>
       </div>
       {status === 'down' && (
