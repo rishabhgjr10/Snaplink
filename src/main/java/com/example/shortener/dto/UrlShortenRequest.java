@@ -1,23 +1,14 @@
 package com.example.shortener.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class UrlShortenRequest {
-    private String originalUrl;
+/** Body of POST /api/v1/urls/shorten. URL and alias rules are enforced by UrlPolicy. */
+public record UrlShortenRequest(
+        @NotBlank(message = "Enter a URL.")
+        @Size(max = 2048, message = "URL must be at most 2048 characters.")
+        String originalUrl,
 
-    // Optional custom alias (short code). If provided, must be alphanumeric and 6-10 chars.
-    private String customAlias;
-
-    public String getOriginalUrl() {
-        return originalUrl;
-    }
-
-    public String getCustomAlias() {
-        return customAlias;
-    }
+        @Size(max = 32, message = "Alias must be at most 32 characters.")
+        String customAlias) {
 }

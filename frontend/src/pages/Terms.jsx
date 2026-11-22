@@ -9,7 +9,7 @@ const SECTIONS = [
   { title: '3. Acceptable use', body: 'You may use the Service only for lawful purposes. You must not create shortened links that point to: spam, phishing pages, malware, illegal content, content that violates intellectual-property rights, or any material that could expose the operator to legal liability. Automated bulk link creation without prior written permission is prohibited.' },
   { title: '4. Account responsibility', body: 'You are responsible for all activity that occurs under your account. Keep your credentials secure. Notify dhakad.kumawat18@gmail.com immediately if you suspect unauthorised access.' },
   { title: '5. Link availability', body: 'We make reasonable efforts to keep the Service online, but we do not guarantee uptime or link availability. Links may be temporarily or permanently unavailable due to maintenance, abuse intervention, or technical failure. The Service is provided free of charge and on a best-effort basis.' },
-  { title: '6. Link expiry & deletion', body: 'Links created with an expiry time will automatically stop redirecting after that time. The operator reserves the right to delete any link at any time, including links that violate these Terms or are otherwise deemed harmful.' },
+  { title: '6. Link expiry & deletion', body: 'Links do not expire automatically. The operator reserves the right to delete any link at any time, including links that violate these Terms or are otherwise deemed harmful.' },
   { title: '7. Termination', body: 'We reserve the right to suspend or permanently ban any account found to be in violation of these Terms, at our sole discretion and without prior notice.' },
   { title: '8. Disclaimer of warranties', body: 'The Service is provided "as is" without any warranty, express or implied. We disclaim all warranties including fitness for a particular purpose and non-infringement. Use the Service at your own risk.' },
   { title: '9. Limitation of liability', body: 'To the maximum extent permitted by applicable law, the operator shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.' },
@@ -28,7 +28,7 @@ export function TermsPage() {
       <main style={{ flex: 1, maxWidth: 760, margin: '0 auto', padding: '64px 24px 80px', width: '100%' }}>
         <h1 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 48, color: C.text, marginBottom: 8 }}>Terms of Service</h1>
         <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 48 }}>
-          Last updated: {new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
+          Last updated: 22 November 2026
         </p>
         {SECTIONS.map(({ title, body }) => (
           <div key={title} style={{ marginBottom: 40 }}>

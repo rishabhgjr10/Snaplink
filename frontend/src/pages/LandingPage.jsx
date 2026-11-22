@@ -42,11 +42,12 @@ function DemoWidget() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   async function handleShorten(e) {
     e.preventDefault();
     if (!url.trim()) return;
-    setLoading(true); setError(''); setResult(null);
+    setLoading(true); setError(''); setResult(null); setCopied(false);
     try {
       const data = await shortenUrl({ url: url.trim() });
       setResult(data);
@@ -63,6 +64,8 @@ function DemoWidget() {
         <input
           className="inp"
           placeholder="Paste a long URL here…"
+          aria-label="Long URL to shorten"
+          type="url"
           value={url}
           onChange={e => setUrl(e.target.value)}
           style={{ flex: 1 }}
@@ -74,13 +77,14 @@ function DemoWidget() {
       {error && <p style={{ fontFamily: C.mono, fontSize: 12, color: '#ff6b6b', margin: 0 }}>{error}</p>}
       {result && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(108,99,255,0.08)', border: '1px solid rgba(108,99,255,0.22)', borderRadius: 8, padding: '10px 14px' }}>
-          <a href={result.short_url} target="_blank" rel="noreferrer"
+          <a href={result.shortUrl} target="_blank" rel="noreferrer"
             style={{ fontFamily: C.mono, fontSize: 13, color: C.accent, textDecoration: 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {result.short_url}
+            {result.shortUrl}
           </a>
-          <button onClick={() => navigator.clipboard.writeText(result.short_url)}
+          <button onClick={() => navigator.clipboard.writeText(result.shortUrl).then(() => setCopied(true)).catch(() => setError('Copy failed. Select the link and copy it manually.'))}
+            aria-label="Copy short link"
             style={{ background: 'none', border: `1px solid rgba(108,99,255,0.4)`, borderRadius: 5, color: C.accent, fontFamily: C.mono, fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>
-            Copy
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
       )}

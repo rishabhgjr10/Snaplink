@@ -39,9 +39,6 @@ export function NavBar({ toast }) {
 
       {/* ── Auth Actions (Features/Analytics/Pricing removed) ── */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', minHeight: 34 }}>
-        {user?.role === 'admin' && (
-          <Link to="/v1/admin" className="btn-g btn-sm" style={{ fontFamily: C.mono, fontSize: 11, color: C.accent }}>admin</Link>
-        )}
         {user ? (
           <>
             {user.email && (
@@ -83,7 +80,7 @@ export function Footer() {
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <Logo size="sm" />
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          {[['Privacy Policy', '/privacy'], ['Terms', '/terms'], ['GitHub ↗', 'https://github.com/rishabhgjr10/Snaplink']].map(([label, href]) => (
+          {[['Privacy Policy', '/privacy'], ['Terms', '/terms'], ['Report abuse', '/report'], ['GitHub ↗', 'https://github.com/rishabhgjr10/Snaplink']].map(([label, href]) => (
             <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
               style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .15s' }}
               onMouseEnter={e => e.currentTarget.style.color = C.text}

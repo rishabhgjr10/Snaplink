@@ -18,7 +18,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // Every API route; the wake-up health check is excluded so it can never be throttled.
         registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/v1/urls/shorten", "/api/v1/urls/shorten/**");
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/v1/health");
     }
 }

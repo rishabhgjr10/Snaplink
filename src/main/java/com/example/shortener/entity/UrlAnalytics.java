@@ -1,15 +1,30 @@
 package com.example.shortener.entity;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.Instant;
 
 /**
- * Captures a single click event for a short URL.
+ * One recorded click on a short link. Linked to the link by id, so renaming
+ * the alias keeps its history. Stores only privacy-reduced data: a truncated
+ * IP and the referrer's origin.
  */
 @Entity
 @Table(name = "url_analytics", indexes = {
-        @Index(name = "idx_analytics_short_code", columnList = "short_code, accessed_at")
+        @Index(name = "idx_analytics_url_time", columnList = "url_id, accessed_at"),
+        @Index(name = "idx_analytics_accessed_at", columnList = "accessed_at")
 })
 public class UrlAnalytics {
 
@@ -17,11 +32,12 @@ public class UrlAnalytics {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "short_code", length = 64, nullable = false)
-    private String shortCode;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "url_id", nullable = false, foreignKey = @ForeignKey(name = "fk_analytics_url"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private UrlEntity url;
 
-    @CreationTimestamp
-    @Column(name = "accessed_at", updatable = false)
+    @Column(name = "accessed_at", nullable = false, updatable = false)
     private Instant accessedAt;
 
     @Column(name = "ip_address", length = 45)
@@ -33,25 +49,20 @@ public class UrlAnalytics {
     @Column(name = "referer", length = 512)
     private String referer;
 
-    public UrlAnalytics() {}
+    protected UrlAnalytics() {}
 
-    public UrlAnalytics(String shortCode, String ipAddress, String userAgent, String referer) {
-        this.shortCode = shortCode;
+    public UrlAnalytics(UrlEntity url, Instant accessedAt, String ipAddress, String userAgent, String referer) {
+        this.url = url;
+        this.accessedAt = accessedAt;
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
         this.referer = referer;
     }
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getShortCode() { return shortCode; }
-    public void setShortCode(String shortCode) { this.shortCode = shortCode; }
+    public UrlEntity getUrl() { return url; }
     public Instant getAccessedAt() { return accessedAt; }
-    public void setAccessedAt(Instant accessedAt) { this.accessedAt = accessedAt; }
     public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
     public String getUserAgent() { return userAgent; }
-    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
     public String getReferer() { return referer; }
-    public void setReferer(String referer) { this.referer = referer; }
 }

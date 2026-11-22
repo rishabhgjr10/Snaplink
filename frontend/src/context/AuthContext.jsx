@@ -8,97 +8,47 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth, googleProvider, githubProvider } from '../lib/firebase';
+import { getMe } from '../services/api';
 
 export const AuthContext = createContext(null);
 
+// The Firebase SDK keeps the session (in IndexedDB) and refreshes ID tokens itself.
+// Nothing auth-related is stored in localStorage, and API calls fetch a fresh token
+// per request (see services/api.ts), so no stale or tamperable copy exists.
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('user');
-      if (saved) return JSON.parse(saved);
-      if (localStorage.getItem('token')) return { role: 'user' };
-      return null;
-    } catch {
-      return null;
-    }
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true); // true while Firebase resolves initial state
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // true until Firebase restores the session
 
-  // Listen for Firebase auth state changes (persisted across refreshes)
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const idToken = await firebaseUser.getIdToken();
-        setToken(idToken);
-        localStorage.setItem('token', idToken);
-        const userData = {
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          uid: firebaseUser.uid,
-          role: 'user',
-        };
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-      } else {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+    // Clean up values written by earlier versions of the app.
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } catch { /* storage unavailable */ }
+
+    return onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser ? {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      } : null);
       setLoading(false);
     });
-    return unsub;
   }, []);
 
-  // ── Email / Password ───────────────────────────────────────────────────────
-  const loginWithEmail = useCallback(async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    return cred.user;
-  }, []);
-
-  const signupWithEmail = useCallback(async (email, password) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    return cred.user;
-  }, []);
-
-  // ── OAuth providers ────────────────────────────────────────────────────────
-  const loginWithGoogle = useCallback(async () => {
-    const cred = await signInWithPopup(auth, googleProvider);
-    return cred.user;
-  }, []);
-
-  const loginWithGithub = useCallback(async () => {
-    const cred = await signInWithPopup(auth, githubProvider);
-    return cred.user;
-  }, []);
-
-  // ── Logout ─────────────────────────────────────────────────────────────────
-  const logout = useCallback(async () => {
-    await signOut(auth);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  }, []);
-
-  // Legacy compat — some components call login(token, userObj) directly.
-  const login = useCallback((t, u) => {
-    localStorage.setItem('token', t);
-    if (u) {
-      localStorage.setItem('user', JSON.stringify(u));
-    }
-    setToken(t);
-    setUser(u);
-  }, []);
+  const loginWithEmail = useCallback(
+    async (email, password) => (await signInWithEmailAndPassword(auth, email, password)).user, []);
+  const signupWithEmail = useCallback(
+    async (email, password) => (await createUserWithEmailAndPassword(auth, email, password)).user, []);
+  const loginWithGoogle = useCallback(async () => (await signInWithPopup(auth, googleProvider)).user, []);
+  const loginWithGithub = useCallback(async () => (await signInWithPopup(auth, githubProvider)).user, []);
+  const logout = useCallback(() => signOut(auth), []);
 
   return (
     <AuthContext.Provider value={{
-      token, user, loading, isAuthLoading: loading,
-      login, logout,
-      loginWithEmail, signupWithEmail,
-      loginWithGoogle, loginWithGithub,
+      user, loading, isAuthLoading: loading,
+      logout, loginWithEmail, signupWithEmail, loginWithGoogle, loginWithGithub,
     }}>
       {children}
     </AuthContext.Provider>
@@ -108,18 +58,29 @@ export function AuthProvider({ children }) {
 export function useAuth() { return useContext(AuthContext); }
 
 export function PrivateRoute({ children }) {
-  const { token, loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
-  if (loading) return null; // wait for Firebase to resolve
-  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (loading) return null; // wait for Firebase to restore the session
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
 }
 
+/** Admin access is decided by the backend (/api/v1/me), never by client-side state. */
 export function AdminRoute({ children }) {
-  const { token, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+  const [admin, setAdmin] = useState(null); // null = checking
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getMe().then(me => !cancelled && setAdmin(me.admin)).catch(() => !cancelled && setAdmin(false));
+    return () => { cancelled = true; };
+  }, [user]);
+
   if (loading) return null;
-  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (admin === null) return null;
+  if (!admin) return <Navigate to="/dashboard" replace />;
   return children;
 }

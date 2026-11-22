@@ -1,26 +1,21 @@
-import { useState } from 'react';
-import { C } from '../constants/theme';
+import { lazy, Suspense, useState } from 'react';
 import { Ic } from '../constants/icons';
-import { QRCodeModal } from './QRCodeModal';
+
+// The QR rendering library is only downloaded when a QR code is actually opened.
+const QRCodeModal = lazy(() => import('./QRCodeModal').then(m => ({ default: m.QRCodeModal })));
 
 export function QRButton({ url }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        title="Generate QR Code"
-        style={{
-          background: 'none', border: `1px solid ${C.border2}`, borderRadius: 6,
-          color: C.muted, cursor: 'pointer', padding: '5px 7px', lineHeight: 0,
-          display: 'flex', alignItems: 'center', transition: 'color .15s, border-color .15s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent; }}
-        onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border2; }}
-      >
+      <button className="bico" onClick={() => setOpen(true)} title="Generate QR code" aria-label={`QR code for ${url}`}>
         {Ic.qr}
       </button>
-      {open && <QRCodeModal url={url} onClose={() => setOpen(false)} />}
+      {open && (
+        <Suspense fallback={null}>
+          <QRCodeModal url={url} onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

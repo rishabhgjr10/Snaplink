@@ -1,129 +1,58 @@
 import { useState } from 'react';
-import { C, inputStyle, primaryBtn, actionBtn } from '../constants/theme';
 import { updateLink } from '../services/api';
+import { Modal } from './Modal';
 
-export function EditModal({ entry, token, onClose, onSave, toast }) {
-  const [originalUrl, setOriginalUrl] = useState(entry.original_url || '');
+/** Edit a link's destination and/or alias. */
+export function EditModal({ entry, onClose, onSave, toast }) {
+  const [originalUrl, setOriginalUrl] = useState(entry.originalUrl || '');
+  const [alias, setAlias] = useState(entry.code || '');
   const [saving, setSaving] = useState(false);
-  const [advOpen, setAdvOpen] = useState(false);
 
-  async function save() {
-    if (!originalUrl.trim()) { toast('URL is required.', 'error'); return; }
+  async function save(e) {
+    e.preventDefault();
+    const url = originalUrl.trim();
+    const newAlias = alias.trim();
+    if (!url) { toast('URL is required.', 'error'); return; }
+
+    const changes = {};
+    if (url !== entry.originalUrl) changes.originalUrl = url;
+    if (newAlias && newAlias !== entry.code) changes.customAlias = newAlias;
+    if (!Object.keys(changes).length) { onClose(); return; }
+
     setSaving(true);
     try {
-      const res = await updateLink(entry.code, { original_url: originalUrl.trim() });
-      if (!res.ok) { toast(res.data?.message || 'Save failed.', 'error'); return; }
+      await updateLink(entry.code, changes);
       toast('Link updated.', 'success');
       onSave();
       onClose();
-    } catch { toast('Network error.', 'error'); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast(err.message || 'Save failed.', 'error');
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const iStyle = { ...inputStyle, width: '100%', marginBottom: 0 };
-  const labelStyle = { fontFamily: C.mono, fontSize: 11, color: C.muted, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' };
-  const sectionBtn = (open) => ({
-    background: 'none', border: `1px solid ${C.border2}`, borderRadius: 6, color: open ? C.accent : C.muted,
-    fontFamily: C.mono, fontSize: 11, cursor: 'pointer', padding: '5px 12px', width: '100%', textAlign: 'left',
-    transition: 'color .15s, border-color .15s', borderColor: open ? C.accent : C.border2,
-  });
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: C.card, border: `1px solid ${C.border2}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 22, color: C.text }}>Edit /{entry.code}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
-        </div>
-
+    <Modal title={`Edit /${entry.code}`} onClose={onClose}>
+      <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
-          <label style={labelStyle}>Destination URL</label>
-          <input value={originalUrl} onChange={e => setOriginalUrl(e.target.value)} style={iStyle}
-            onFocus={e => e.currentTarget.style.borderColor = C.accent}
-            onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+          <label className="field-label" htmlFor="edit-url">Destination URL</label>
+          <input id="edit-url" className="inp" type="url" value={originalUrl}
+            onChange={e => setOriginalUrl(e.target.value)} required />
         </div>
-
         <div>
-          <button style={sectionBtn(advOpen)} onClick={() => setAdvOpen(o => !o)}>
-            {advOpen ? '▲' : '▼'} Advanced options
-          </button>
-          {advOpen && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Password {entry.password_hash ? '(currently set)' : ''}</label>
-                {entry.password_hash && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={clearPassword} onChange={e => setClearPassword(e.target.checked)} />
-                    Remove current password
-                  </label>
-                )}
-                {!clearPassword && (
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    placeholder={entry.password_hash ? 'Enter new password to replace…' : 'Set a password (optional)'}
-                    style={iStyle}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                )}
-              </div>
-              <div>
-                <label style={labelStyle}>Max clicks (0 = unlimited)</label>
-                <input type="number" min="0" value={maxClicks} onChange={e => setMaxClicks(e.target.value)}
-                  placeholder="e.g. 100" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-            </div>
-          )}
+          <label className="field-label" htmlFor="edit-alias">Alias</label>
+          <input id="edit-alias" className="inp" value={alias} onChange={e => setAlias(e.target.value)}
+            pattern="[A-Za-z0-9_\-]{3,32}" title="3-32 letters, numbers, '-' or '_'" />
+          <p style={{ marginTop: 6, fontSize: 11 }}>
+            Changing the alias breaks the old short link. Click history is kept.
+          </p>
         </div>
-
-        <div>
-          <button style={sectionBtn(deviceOpen)} onClick={() => setDeviceOpen(o => !o)}>
-            {deviceOpen ? '▲' : '▼'} Device routing & social preview
-          </button>
-          {deviceOpen && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>iOS URL (overrides destination for iPhone/iPad)</label>
-                <input value={iosUrl} onChange={e => setIosUrl(e.target.value)} placeholder="https://apps.apple.com/…" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-              <div>
-                <label style={labelStyle}>Android URL (overrides destination for Android)</label>
-                <input value={androidUrl} onChange={e => setAndroidUrl(e.target.value)} placeholder="https://play.google.com/…" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-              <div>
-                <label style={labelStyle}>OG Title (for social media previews)</label>
-                <input value={ogTitle} onChange={e => setOgTitle(e.target.value)} placeholder="e.g. Check out this link!" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-              <div>
-                <label style={labelStyle}>OG Description</label>
-                <input value={ogDesc} onChange={e => setOgDesc(e.target.value)} placeholder="Brief description for link previews" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-              <div>
-                <label style={labelStyle}>OG Image URL</label>
-                <input value={ogImage} onChange={e => setOgImage(e.target.value)} placeholder="https://example.com/image.jpg" style={iStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-              </div>
-            </div>
-          )}
+        <div className="modal-actions">
+          <button type="button" className="btn-g btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="btn-p" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
         </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button onClick={save} disabled={saving} style={{ ...primaryBtn, flex: 1 }}>
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-          <button onClick={onClose} style={{ ...actionBtn, flex: '0 0 auto', padding: '10px 18px' }}>Cancel</button>
-        </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

@@ -24,8 +24,8 @@
 
 ### ⚡ Ultra-Short Custom Domain Routing
 - Generates clean, branded short links via our custom domain: `https://bauna.xyz/<alias>`
-- Choose between compact auto-generated Base62 slugs or custom aliases.
-- Configurable link expiration options (`5m`, `1h`, `24h`, `7d`, `30d`, or permanent).
+- Choose between random 7-character codes or case-sensitive custom aliases.
+- Destinations are validated (http/https only, no self-links, optional domain blocklist and Google Safe Browsing).
 
 ### 🌐 Edge Proxy Architecture (Zero CORS Overhead)
 - Powered by Vercel edge rewrites ([`frontend/vercel.json`](frontend/vercel.json)) matching routes at the network edge.
@@ -41,16 +41,16 @@
 
 ### 🔐 OAuth 2.0 & Firebase Authentication
 - Seamless social login with **Google** and **GitHub** popup authentication alongside email/password credentials.
-- Client session persistence using Firebase Auth state synchronization with protected dashboard routes.
+- The backend verifies Firebase ID tokens on every request; each user can only see and change their own links.
 
 ### 🛡️ Fault-Tolerant Caching & Persistence
 - Low-latency cache layer with **Spring Data Redis (Lettuce)** over SSL/TLS.
-- **Resilient Fallback Design:** All cache operations implement graceful try-catch degradation (`ResilientCacheErrorHandler`). If Redis is unavailable or undergoing maintenance, requests silently fall through to SSL-enforced **Aiven MySQL** without dropping traffic or throwing 500 errors.
+- **Resilient Fallback Design:** `UrlCache` uses Redis when configured, with a TTL on every entry and a circuit breaker: after a Redis failure it switches to a bounded in-memory cache for 30 seconds instead of making every redirect wait. Cache writes happen only after the database transaction commits.
 
 ### 📊 Link Analytics & Management
-- Real-time visit tracking: click counter, timestamps, client IP address, user agent, and referrer URL.
-- Active/pause link state toggling, password protection, and OpenGraph preview metadata support.
-- In-memory client rate limiting powered by **Bucket4j** (20 requests/minute per client IP) on creation endpoints.
+- Privacy-respecting click tracking: total clicks, clicks per hour, recent visits with device type and referring site. IPs are truncated, bots and link previews are not counted, and records expire after 365 days.
+- Edit destination or alias without losing click history; abuse reports with admin takedown.
+- Rate limiting with **Bucket4j** on every API route: per user when signed in, per client IP otherwise, plus a shared cap on anonymous writes.
 
 ---
 
@@ -71,8 +71,8 @@ flowchart TD
 
     subgraph Backend["Backend Layer (Render / Docker)"]
         SpringApp["Spring Boot 3 Web Service\n(Java 21 / Eclipse Temurin)"]
-        RateLimiter["Bucket4j Token Bucket\n(20 req/min)"]
-        ErrorHandler["ResilientCacheErrorHandler\n(Graceful Cache Fallback)"]
+        RateLimiter["Firebase JWT check +\nBucket4j rate limits"]
+        ErrorHandler["UrlCache\n(TTL + circuit breaker)"]
     end
 
     subgraph Storage["Managed Cloud Data (Aiven Cloud)"]
@@ -126,101 +126,58 @@ Vercel acts as an intelligent edge reverse proxy, routing traffic according to t
 
 ## 📡 REST API Reference
 
-Base Production URL: `https://bauna.xyz/api/v1` (or backend direct: `https://snaplink-backend-3rk3.onrender.com/api/v1`)
+Base URL: `https://bauna.xyz/api/v1` (same-origin through the Vercel rewrite).
 
-### 1. Shorten a URL
+**Authentication.** Endpoints marked 🔒 need a Firebase ID token: `Authorization: Bearer <token>`.
+The backend verifies the signature, issuer, audience (`FIREBASE_PROJECT_ID`) and expiry.
+Links belong to the signed-in user who created them; another user's link behaves exactly like a missing one (`404`).
+
+**Errors** always use the same envelope: `{"success": false, "message": "...", "status": <code>}`
+(`400` invalid input, `401` not signed in, `403` not allowed, `404` not found, `409` alias taken, `410` link disabled, `429` rate limited).
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/api/v1/urls/shorten` | optional | Create a link (owned by the caller when signed in) |
+| `GET` | `/api/v1/urls?page=0&size=25&q=` | 🔒 | Caller's links, newest first, with click counts |
+| `GET` | `/api/v1/urls/summary` | 🔒 | `totalLinks`, `totalClicks` across all of the caller's links |
+| `PUT` | `/api/v1/urls/{shortCode}` | 🔒 | Change destination and/or alias (click history is kept) |
+| `DELETE` | `/api/v1/urls/{shortCode}` | 🔒 | Delete a link and its click history |
+| `GET` | `/api/v1/urls/{shortCode}/analytics` | 🔒 | Total clicks, clicks per UTC hour today, last 10 visits |
+| `GET` | `/api/v1/me` | 🔒 | Caller's UID and admin flag |
+| `POST` | `/api/v1/reports` | optional | Report an abusive link |
+| `GET` | `/api/v1/admin/reports?status=OPEN` | 🔒 admin | Review reports |
+| `POST` | `/api/v1/admin/reports/{id}/resolve?status=RESOLVED&disableLink=true` | 🔒 admin | Resolve or dismiss a report |
+| `POST` | `/api/v1/admin/urls/{shortCode}/disable` · `/enable` | 🔒 admin | Take a link down or restore it |
+| `GET` | `/api/v1/health` | — | Lightweight liveness check (used to wake Render) |
+| `GET` | `/{shortCode}` | — | `302` to the destination (`404` unknown, `410` disabled) |
+
+### Create a link
 ```http
 POST /api/v1/urls/shorten
 Content-Type: application/json
 
-{
-  "originalUrl": "https://github.com/rishabhgjr10/Snaplink",
-  "customAlias": "snaplink-repo"
-}
+{ "originalUrl": "https://github.com/rishabhgjr10/Snaplink", "customAlias": "snaplink-repo" }
 ```
-**Response (200 OK):**
+```json
+{ "success": true, "message": "URL shortened", "data": { "shortCode": "snaplink-repo", "originalUrl": "https://github.com/rishabhgjr10/Snaplink" }, "status": 200 }
+```
+Rules: only `http://` and `https://` destinations; no embedded credentials (`https://a.com@b.com`); no links to SnapLink itself or to blocked domains.
+Aliases are 3–32 characters of `A–Z a–z 0–9 - _`, case-sensitive, and may not be a reserved word (`login`, `dashboard`, `api`, …).
+Without an alias a random 7-character code is generated.
+
+### Analytics
 ```json
 {
   "success": true,
-  "message": "URL shortened",
-  "data": {
-    "shortCode": "snaplink-repo",
-    "shortUrl": "https://bauna.xyz/snaplink-repo",
-    "originalUrl": "https://github.com/rishabhgjr10/Snaplink"
-  },
-  "status": 200
-}
-```
-
-### 2. Follow Redirect (HTTP 302)
-```http
-GET /:shortCode
-```
-**Response:** `HTTP/1.1 302 Found` with header `Location: <originalUrl>`
-
-### 3. List All Shortened URLs
-```http
-GET /api/v1/urls
-```
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "URLs retrieved",
-  "data": [
-    {
-      "shortCode": "snaplink-repo",
-      "shortUrl": "https://bauna.xyz/snaplink-repo",
-      "originalUrl": "https://github.com/rishabhgjr10/Snaplink",
-      "createdAt": "2026-10-17T21:00:00Z",
-      "totalClicks": 128
-    }
-  ],
-  "status": 200
-}
-```
-
-### 4. Fetch Link Analytics
-```http
-GET /api/v1/urls/{shortCode}/analytics
-```
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Analytics fetched",
   "data": {
     "totalClicks": 128,
-    "recentVisits": [
-      {
-        "id": 1,
-        "shortCode": "snaplink-repo",
-        "accessedAt": "2026-10-17T21:45:00Z",
-        "ipAddress": "192.168.1.1",
-        "userAgent": "Mozilla/5.0 ...",
-        "referer": "https://google.com"
-      }
-    ]
+    "clicksTodayByHour": [0, 0, 3, "… 24 values …"],
+    "recentVisits": [{ "visitedAt": "2026-11-22T09:45:00Z", "referrer": "https://news.ycombinator.com", "device": "mobile" }]
   },
   "status": 200
 }
 ```
-
-### 5. Update a Shortened URL
-```http
-PUT /api/v1/urls/{shortCode}
-Content-Type: application/json
-
-{
-  "originalUrl": "https://new-destination.com",
-  "customAlias": "new-slug"
-}
-```
-
-### 6. Delete a Shortened URL
-```http
-DELETE /api/v1/urls/{shortCode}
-```
+Visitor IP addresses and user agents are never returned. Bots and link-preview fetchers are not counted, and a repeat click from the same visitor within 30 seconds counts once.
 
 ---
 
@@ -230,110 +187,71 @@ DELETE /api/v1/urls/{shortCode}
 - [Git](https://git-scm.com/)
 - [Java 21 JDK](https://adoptium.net/) (Eclipse Temurin recommended)
 - [Node.js 20+](https://nodejs.org/) & `npm`
-- [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized local stack)
+- [Docker](https://www.docker.com/) (for Docker Compose and for the backend integration tests)
 
----
-
-### Method A: Quickstart with Docker Compose
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/rishabhgjr10/Snaplink.git
-   cd Snaplink
-   ```
-
-2. **Start the complete stack (MySQL, Redis, Backend, Frontend):**
-   ```bash
-   docker-compose up --build -d
-   ```
-
-3. **Verify endpoints:**
-   - Frontend UI: `http://localhost:5173`
-   - Backend API: `http://localhost:8080`
-   - MySQL: `localhost:3307` (user: `root`, password: `rootpassword`)
-   - Redis: `localhost:6379`
-
----
-
-### Method B: Native Local Development (Maven + Vite)
-
-#### 1. Configure Backend (`src/main/resources/application.properties` or `.env`)
-You can use a local MySQL/Redis instance or point to cloud credentials:
-```properties
-# Spring Datasource
-spring.datasource.url=jdbc:mysql://localhost:3306/urlshortener?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-spring.datasource.username=root
-spring.datasource.password=your_mysql_password
-
-# Spring Redis
-spring.data.redis.host=localhost
-spring.data.redis.port=6379
-spring.data.redis.password=
-spring.data.redis.ssl.enabled=false
-
-# App Base Redirect Domain
-app.base-url=http://localhost:8080
-cors.allowed-origins=http://localhost:5173,https://bauna.xyz,https://*.bauna.xyz,https://*.vercel.app
-```
-
-Run the Spring Boot application:
+### Method A: Docker Compose
 ```bash
-./mvnw clean spring-boot:run
-# On Windows:
-mvnw.cmd clean spring-boot:run
+docker compose up --build -d
 ```
+- Frontend: `http://localhost:5173` · Backend: `http://localhost:8080`
+- MySQL on `127.0.0.1:3307` and Redis on `127.0.0.1:6379` (local-only). Set `LOCAL_MYSQL_PASSWORD`, `LOCAL_MYSQL_ROOT_PASSWORD` and `LOCAL_REDIS_PASSWORD` in a `.env` file to replace the local defaults.
 
-#### 2. Configure Frontend (`frontend/.env`)
-Create `frontend/.env` using `frontend/.env.example` as a template:
-```env
-# API Gateway Endpoint
-VITE_API_URL=http://localhost:8080
-
-# Firebase Configuration
-VITE_FIREBASE_API_KEY=AIzaSy...
-VITE_FIREBASE_AUTH_DOMAIN=snapliink.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=snapliink
-VITE_FIREBASE_STORAGE_BUCKET=snapliink.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=1025901795798
-VITE_FIREBASE_APP_ID=1:1025901795798:web:...
+### Method B: Maven + Vite
+Backend with the `dev` profile (in-memory H2 database, no Redis needed):
+```bash
+SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run
 ```
-
-Install dependencies and start the Vite dev server:
+Frontend (create `frontend/.env` from `frontend/.env.example` and fill in the Firebase values):
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
+
+### Tests
+```bash
+mvn verify            # unit tests + MySQL integration tests (needs Docker)
+cd frontend && npm run typecheck && npm test && npm run build
+```
+CI runs the same commands on every push and pull request (`.github/workflows/ci.yml`).
+
+### Database migrations
+The schema is managed by Flyway (`src/main/resources/db/migration`). Existing databases are baselined at version 1 on first start, then later versions run automatically. Never edit a migration that has already run; add a new `V<n>__description.sql` instead.
 
 ---
 
 ## ☁️ Production Deployment Variables
 
-### 1. Render (Backend Docker Web Service)
-| Environment Variable | Recommended Production Value |
-|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:mysql://<aiven-host>:<port>/defaultdb?sslMode=REQUIRED` |
-| `SPRING_DATASOURCE_USERNAME` | `avnadmin` |
-| `SPRING_DATASOURCE_PASSWORD` | `<your-aiven-mysql-password>` |
-| `SPRING_REDIS_HOST` | `<your-aiven-redis-host>` |
-| `SPRING_REDIS_PORT` | `<your-aiven-redis-port>` |
-| `SPRING_REDIS_PASSWORD` | `<your-aiven-redis-password>` |
-| `SPRING_REDIS_SSL` | `true` |
-| `APP_BASE_URL` | `https://bauna.xyz` |
-| `CORS_ALLOWED_ORIGINS` | `https://bauna.xyz,https://*.bauna.xyz,https://*.vercel.app,http://localhost:5173` |
-| `SPRING_PROFILES_ACTIVE` | `prod` |
+### 1. Render (backend)
+| Variable | Required | Value |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` | yes | `jdbc:mysql://<host>:<port>/<db>?sslMode=REQUIRED` |
+| `SPRING_DATASOURCE_USERNAME` | yes | database user |
+| `SPRING_DATASOURCE_PASSWORD` | yes | database password |
+| `APP_BASE_URL` | yes | `https://bauna.xyz` |
+| `APP_ADMIN_UIDS` | recommended | Firebase UIDs of moderators, comma separated |
+| `FIREBASE_PROJECT_ID` | no (default `snapliink`) | Firebase project whose tokens are accepted |
+| `SPRING_REDIS_HOST` / `_PORT` / `_PASSWORD` / `_SSL` | no | Redis for shared cache and rate limits; omit to use in-memory |
+| `CORS_ALLOWED_ORIGINS` | no | Exact origins only (default `http://localhost:5173,https://bauna.xyz,https://www.bauna.xyz`) |
+| `RATE_LIMIT_TRUSTED_PROXY_HOPS` | no (default `1`) | Proxies in front of the app that append to `X-Forwarded-For` |
+| `APP_BLOCKED_DOMAINS` | no | Destination domains to refuse |
+| `SAFE_BROWSING_API_KEY` | no | Enables Google Safe Browsing checks on new links |
+| `ANALYTICS_RETENTION_DAYS` | no (default `365`) | Click records older than this are deleted daily |
+| `SENTRY_DSN` | no | Error tracking |
+| `SPRING_PROFILES_ACTIVE` | no (default `prod`) | `prod` enables JSON logs |
 
-### 2. Vercel (Frontend SPA)
-| Environment Variable | Production Value |
-|---|---|
-| `VITE_API_URL` | `https://snaplink-backend-3rk3.onrender.com` |
-| `VITE_FIREBASE_API_KEY` | `<your-firebase-api-key>` |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `snapliink.firebaseapp.com` |
-| `VITE_FIREBASE_PROJECT_ID` | `snapliink` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `snapliink.firebasestorage.app` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `1025901795798` |
-| `VITE_FIREBASE_APP_ID` | `<your-firebase-app-id>` |
+Health probes: `/actuator/health/liveness`, `/actuator/health/readiness`.
+
+### 2. Vercel (frontend)
+| Variable | Required | Value |
+|---|---|---|
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | yes | From the Firebase console |
+| `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID` | no | From the Firebase console |
+| `VITE_API_URL` | no | Leave empty: the API is reached same-origin through `vercel.json` |
+| `VITE_BACKEND_URL` | no | Short-link origin; defaults to the site origin |
+| `VITE_SENTRY_DSN` | no | Error tracking |
+
+`vercel.json` also sets security headers. The Content-Security-Policy is shipped in **report-only** mode: check the browser console for violations, then rename the header to `Content-Security-Policy` to enforce it.
 
 ---
 
@@ -341,36 +259,29 @@ Open `http://localhost:5173` in your browser.
 
 ```text
 Snaplink/
-├── Dockerfile                         # Production multi-stage Temurin 21 backend build
-├── docker-compose.yml                 # Local dev orchestration (MySQL, Redis, App, UI)
-├── pom.xml                            # Maven dependencies & build configuration
-├── README.md                          # Production architecture documentation
-├── src/                               # Spring Boot 3 Java Backend
-│   ├── main/
-│   │   ├── java/com/example/shortener/
-│   │   │   ├── UrlShortenerApplication.java
-│   │   │   ├── config/                # RedisConfig (SSL), ResilientCacheErrorHandler, CorsConfig, RateLimiterFilter
-│   │   │   ├── controller/            # UrlController (/api/v1/urls), RedirectController (/{shortCode})
-│   │   │   ├── dto/                   # UrlShortenRequest, UrlShortenResponse, AnalyticsDTO
-│   │   │   ├── entity/                # UrlEntity, UrlAnalytics (JPA entities)
-│   │   │   ├── repository/            # UrlRepository, UrlAnalyticsRepository
-│   │   │   ├── service/               # UrlServiceImpl (Cache-Aside + Fail-Open MySQL fallback)
-│   │   │   └── util/                  # Base62Util, ApiResponse wrapper
-│   │   └── resources/
-│   │       ├── application.properties # Parameterized production configuration
-│   │       └── application-dev.properties
-│   └── test/                          # Unit & integration tests
-└── frontend/                          # React 18 + Vite SPA
-    ├── .env.example                   # Reference environment configuration
-    ├── package.json                   # Dependencies: Firebase, qr-code-styling, react-router-dom
-    ├── vercel.json                    # Edge proxy & SPA rewrite engine
-    ├── vite.config.js                 # Vite bundler & dev proxy
+├── Dockerfile                         # Backend image (Temurin 21)
+├── docker-compose.yml                 # Local stack (MySQL, Redis, backend, frontend)
+├── pom.xml
+├── .github/workflows/ci.yml           # Backend + frontend checks
+├── src/main/java/com/example/shortener/
+│   ├── config/                        # Security (Firebase JWT), CORS, rate limiting, Redis, errors
+│   ├── controller/                    # Url, Redirect, Report, Admin, Health
+│   ├── dto/                           # Request/response records
+│   ├── entity/                        # UrlEntity, UrlAnalytics, LinkReport
+│   ├── exception/                     # Typed API errors
+│   ├── repository/
+│   ├── security/                      # CurrentUser, ClientIpResolver
+│   └── service/                       # UrlService, UrlPolicy, UrlCache, ClickRecorder, ...
+├── src/main/resources/db/migration/   # Flyway migrations
+├── src/test/                          # Unit + Testcontainers integration tests
+└── frontend/
+    ├── vercel.json                    # Rewrites + security headers
     └── src/
-        ├── components/                # QRCodeModal (Portal Studio), LinkRow, AnalyticsPanel
-        ├── context/                   # AuthContext.jsx (Firebase Google & GitHub OAuth)
-        ├── lib/                       # firebase.js (Firebase Auth client SDK)
-        ├── pages/                     # LandingPage, Dashboard, Login, Signup
-        └── services/                  # api.js (Axios client)
+        ├── components/dashboard/      # Sidebar, LinksTab, AnalyticsTab, CreateLinkPanel, ...
+        ├── hooks/                     # useLinks, useBackendStatus, useToast
+        ├── pages/                     # Landing, Dashboard, Admin, Report, Login, Signup, Privacy, Terms
+        ├── services/api.ts            # Typed API client
+        └── styles/global.css
 ```
 
 ---

@@ -1,66 +1,54 @@
 package com.example.shortener.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
-import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.Duration;
+
+/**
+ * Redis connection, created only when {@code spring.data.redis.host} is set.
+ * Without it the app uses bounded in-memory caches and rate-limit buckets,
+ * instead of trying (and timing out on) a Redis that does not exist.
+ */
 @Configuration
-@Profile("!dev")
-@EnableCaching
-@ConditionalOnProperty(name = {"spring.data.redis.host", "spring.redis.host"}, matchIfMissing = false)
+@ConditionalOnExpression("!'${spring.data.redis.host:}'.trim().isEmpty()")
 public class RedisConfig {
 
-    @Value("${spring.data.redis.host:${spring.redis.host:localhost}}")
+    @Value("${spring.data.redis.host}")
     private String redisHost;
 
-    @Value("${spring.data.redis.port:${spring.redis.port:6379}}")
+    @Value("${spring.data.redis.port:6379}")
     private int redisPort;
 
-    @Value("${spring.data.redis.password:${spring.redis.password:}}")
+    @Value("${spring.data.redis.password:}")
     private String redisPassword;
 
-    @Value("${spring.data.redis.ssl.enabled:${spring.redis.ssl.enabled:false}}")
+    @Value("${spring.data.redis.ssl.enabled:false}")
     private boolean redisSsl;
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
-        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost.trim(), redisPort);
         if (redisPassword != null && !redisPassword.isBlank()) {
             redisConfig.setPassword(RedisPassword.of(redisPassword));
         }
-
-        LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration.builder();
+        LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfig = LettuceClientConfiguration.builder()
+                .commandTimeout(Duration.ofSeconds(2));
         if (redisSsl) {
-            clientConfigBuilder.useSsl();
+            clientConfig.useSsl();
         }
-
-        return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
+        return new LettuceConnectionFactory(redisConfig, clientConfig.build());
     }
 
     @Bean
-    public RedisTemplate<String, String> redisTemplate(LettuceConnectionFactory factory) {
-        RedisTemplate<String, String> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new StringRedisSerializer());
-        return template;
-    }
-
-    @Bean
-    @Primary
-    public CacheManager cacheManager(LettuceConnectionFactory factory) {
-        return RedisCacheManager.builder(factory).build();
+    public StringRedisTemplate stringRedisTemplate(LettuceConnectionFactory factory) {
+        return new StringRedisTemplate(factory);
     }
 }

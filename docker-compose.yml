@@ -1,13 +1,17 @@
+# Local development stack. Ports are bound to 127.0.0.1 so the database and cache
+# are never reachable from other machines on the network.
 services:
   mysql-db:
     image: mysql:8.0
     container_name: shortener-mysql
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_ROOT_PASSWORD:-change-me-local-root}
       MYSQL_DATABASE: url_shortener
+      MYSQL_USER: ${LOCAL_MYSQL_USER:-snaplink}
+      MYSQL_PASSWORD: ${LOCAL_MYSQL_PASSWORD:-change-me-local}
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -19,13 +23,14 @@ services:
   redis-cache:
     image: redis:7-alpine
     container_name: shortener-redis
-    restart: always
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${LOCAL_REDIS_PASSWORD:-change-me-local}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${LOCAL_REDIS_PASSWORD:-change-me-local}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -36,31 +41,39 @@ services:
       dockerfile: Dockerfile
     container_name: shortener-backend
     restart: on-failure
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
     environment:
-      # These environment variables default to empty so Spring Boot's application.properties
-      # (with managed Aiven connection settings) takes effect unless explicitly overridden in a .env file.
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-}
-      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST:-}
-      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT:-}
-      SPRING_REDIS_PASSWORD: ${SPRING_REDIS_PASSWORD:-}
-      SPRING_REDIS_SSL: ${SPRING_REDIS_SSL:-}
+      # Defaults point at the local containers above; override in a .env file to use other services.
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql-db:3306/url_shortener}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-snaplink}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-change-me-local}
+      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST:-redis-cache}
+      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${SPRING_REDIS_PASSWORD:-change-me-local}
+      SPRING_REDIS_SSL: ${SPRING_REDIS_SSL:-false}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      APP_SELF_HOSTS: ${APP_SELF_HOSTS:-localhost}
+      APP_ADMIN_UIDS: ${APP_ADMIN_UIDS:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      RATE_LIMIT_TRUSTED_PROXY_HOPS: ${RATE_LIMIT_TRUSTED_PROXY_HOPS:-0}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: shortener-frontend
-    restart: always
+    restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
 
 volumes:
   mysql_data:

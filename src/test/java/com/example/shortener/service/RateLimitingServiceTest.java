@@ -1,82 +1,55 @@
 package com.example.shortener.service;
 
-import jakarta.servlet.http.HttpServletRequest;
+import com.example.shortener.config.AppProperties;
+import com.example.shortener.service.RateLimitingService.Plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class RateLimitingServiceTest {
 
-    private RateLimitingService rateLimitingService;
+    private RateLimitingService service;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        // null connectionFactory activates the in-memory fallback
-        rateLimitingService = new RateLimitingService(null);
+        AppProperties props = new AppProperties();
+        props.getRateLimit().setWritePerMinute(3);
+        props.getRateLimit().setReadPerMinute(5);
+        // No Redis: the bounded in-memory bucket store is used.
+        service = new RateLimitingService(mock(ObjectProvider.class), props);
     }
 
     @Test
-    void testConsumeWithinLimit() {
-        String ip = "192.168.1.10";
-        for (int i = 0; i < 20; i++) {
-            assertTrue(rateLimitingService.tryConsume(ip), "Request " + (i + 1) + " should be allowed");
+    void enforcesLimitPerKey() {
+        for (int i = 0; i < 3; i++) {
+            assertThat(service.tryConsume(Plan.WRITE, "ip:1.1.1.1")).isTrue();
         }
+        assertThat(service.tryConsume(Plan.WRITE, "ip:1.1.1.1")).isFalse();
+        assertThat(service.tryConsume(Plan.WRITE, "ip:2.2.2.2")).isTrue();
     }
 
     @Test
-    void testConsumeExceedsLimit() {
-        String ip = "192.168.1.20";
-        for (int i = 0; i < 20; i++) {
-            assertTrue(rateLimitingService.tryConsume(ip));
+    void plansHaveIndependentBudgets() {
+        for (int i = 0; i < 3; i++) {
+            service.tryConsume(Plan.WRITE, "user:a");
         }
-        // 21st request exceeds 20 req/min
-        assertFalse(rateLimitingService.tryConsume(ip), "21st request must be rate limited");
-    }
-
-    @Test
-    void testIndependentBucketsPerIp() {
-        String ipA = "10.0.0.1";
-        String ipB = "10.0.0.2";
-
-        for (int i = 0; i < 20; i++) {
-            assertTrue(rateLimitingService.tryConsume(ipA));
+        assertThat(service.tryConsume(Plan.WRITE, "user:a")).isFalse();
+        for (int i = 0; i < 5; i++) {
+            assertThat(service.tryConsume(Plan.READ, "user:a")).isTrue();
         }
-        assertFalse(rateLimitingService.tryConsume(ipA));
-
-        // ipB should still have full quota
-        assertTrue(rateLimitingService.tryConsume(ipB));
+        assertThat(service.tryConsume(Plan.READ, "user:a")).isFalse();
     }
 
     @Test
-    void testClientIpExtractionFromXForwardedFor() {
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.195, 70.41.3.18, 150.172.238.178");
-
-        String ip = rateLimitingService.getClientIp(request);
-        assertEquals("203.0.113.195", ip);
-    }
-
-    @Test
-    void testClientIpExtractionFromXRealIp() {
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn("198.51.100.1");
-
-        String ip = rateLimitingService.getClientIp(request);
-        assertEquals("198.51.100.1", ip);
-    }
-
-    @Test
-    void testClientIpExtractionFallbackToRemoteAddr() {
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        when(request.getHeader("X-Forwarded-For")).thenReturn("");
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
-        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-
-        String ip = rateLimitingService.getClientIp(request);
-        assertEquals("127.0.0.1", ip);
+    void worksWithoutRedisBean() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<LettuceConnectionFactory> none = mock(ObjectProvider.class);
+        RateLimitingService local = new RateLimitingService(none, new AppProperties());
+        assertThat(local.tryConsume(Plan.READ, "k")).isTrue();
     }
 }

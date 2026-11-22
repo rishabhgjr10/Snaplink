@@ -1,18 +1,12 @@
 package com.example.shortener.dto;
 
-public class UrlUpdateRequest {
-    private String originalUrl;
-    private String customAlias;
+import jakarta.validation.constraints.Size;
 
-    public UrlUpdateRequest() {}
+/** Body of PUT /api/v1/urls/{shortCode}. Omitted or blank fields are left unchanged. */
+public record UrlUpdateRequest(
+        @Size(max = 2048, message = "URL must be at most 2048 characters.")
+        String originalUrl,
 
-    public UrlUpdateRequest(String originalUrl, String customAlias) {
-        this.originalUrl = originalUrl;
-        this.customAlias = customAlias;
-    }
-
-    public String getOriginalUrl() { return originalUrl; }
-    public void setOriginalUrl(String originalUrl) { this.originalUrl = originalUrl; }
-    public String getCustomAlias() { return customAlias; }
-    public void setCustomAlias(String customAlias) { this.customAlias = customAlias; }
+        @Size(max = 32, message = "Alias must be at most 32 characters.")
+        String customAlias) {
 }
