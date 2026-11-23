@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { Logo } from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
+import { PORTFOLIO_URL } from '../config/maintenance';
 
 export function NavBar({ toast }) {
   const { user, isAuthLoading, logout } = useAuth();
@@ -80,7 +81,7 @@ export function Footer() {
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <Logo size="sm" />
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          {[['Privacy Policy', '/privacy'], ['Terms', '/terms'], ['Report abuse', '/report'], ['GitHub ↗', 'https://github.com/rishabhgjr10/Snaplink']].map(([label, href]) => (
+          {[['Privacy Policy', '/privacy'], ['Terms', '/terms'], ['Report abuse', '/report'], ['Portfolio ↗', PORTFOLIO_URL], ['GitHub ↗', 'https://github.com/rishabhgjr10/Snaplink']].map(([label, href]) => (
             <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
               style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .15s' }}
               onMouseEnter={e => e.currentTarget.style.color = C.text}

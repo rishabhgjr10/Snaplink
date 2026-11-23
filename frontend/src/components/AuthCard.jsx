@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { Logo } from './Logo';
+import { MaintenanceBanner } from './MaintenanceBanner';
 
 export function AuthCard({ title, children }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <Link to="/" style={{ textDecoration: 'none', marginBottom: 36 }}><Logo size="sm" /></Link>
+      <MaintenanceBanner compact style={{ maxWidth: 420, marginBottom: 24 }} />
       <div style={{ width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(108,99,255,0.2)', borderRadius: 16, padding: '36px 32px' }}>
         <h2 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 26, color: C.text, marginBottom: 28 }}>{title}</h2>
         {children}

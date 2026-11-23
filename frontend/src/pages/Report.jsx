@@ -4,6 +4,7 @@ import { C } from '../constants/theme';
 import { Logo } from '../components/Logo';
 import { Footer } from '../layouts/MainLayout';
 import { extractShortCode, reportLink } from '../services/api';
+import { MaintenanceBanner } from '../components/MaintenanceBanner';
 
 const REASONS = [
   ['PHISHING', 'Phishing or fake login page'],
@@ -44,6 +45,7 @@ export function ReportPage() {
         <Link to="/" style={{ fontFamily: C.mono, fontSize: 13, color: C.muted, textDecoration: 'none' }}>← back</Link>
       </nav>
       <main style={{ flex: 1, maxWidth: 560, margin: '0 auto', padding: '56px 16px 80px', width: '100%' }}>
+        <MaintenanceBanner compact style={{ marginBottom: 28 }} />
         <h1 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 34, marginBottom: 10 }}>Report a link</h1>
         <p style={{ fontFamily: C.mono, fontSize: 12.5, color: C.muted, lineHeight: 1.7, marginBottom: 28 }}>
           Tell us about a SnapLink short link that leads to phishing, malware, spam or illegal content. We review every report.
