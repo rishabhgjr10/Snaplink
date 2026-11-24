@@ -1,0 +1,8 @@
+# The backend image only needs pom.xml, .mvn/settings.xml and src/.
+.git
+.github
+.claude
+frontend
+target
+**/node_modules
+*.md

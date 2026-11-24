@@ -2,9 +2,18 @@
 FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 
-# Cache dependencies
+# Every mvn call below: batch mode, the Google Maven Central mirror (.mvn/settings.xml),
+# and more patient retries when a repository answers 429/503 (rate limited / unavailable).
+ENV MAVEN_ARGS="-B -s .mvn/settings.xml \
+ -Daether.connector.http.retryHandler.count=8 \
+ -Daether.connector.http.retryHandler.interval=10000 \
+ -Daether.connector.http.retryHandler.serviceUnavailable=429,503"
+
+# Cache dependencies. dependency:resolve fetches only what the app needs; go-offline also
+# downloaded every optional/plugin dependency (hundreds of extra requests to rate-limit).
+COPY .mvn/settings.xml .mvn/settings.xml
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve
 
 # Copy source and build jar
 COPY src ./src
