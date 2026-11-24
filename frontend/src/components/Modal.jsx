@@ -1,8 +1,12 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Accessible modal: role="dialog", labelled by its title, closes on Escape and
  * on a click outside, moves focus inside on open and returns it on close.
+ *
+ * Rendered into document.body: inside a card with backdrop-filter, transform or
+ * overflow:hidden (like .gcard), position:fixed would be trapped and clipped by the card.
  */
 export function Modal({ title, onClose, children }) {
   const titleId = useId();
@@ -20,13 +24,14 @@ export function Modal({ title, onClose, children }) {
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="modal-scrim" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={dialogRef}>
         <h2 id={titleId}>{title}</h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

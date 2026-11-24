@@ -41,6 +41,17 @@ describe('EditModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('renders outside its parent card so the card cannot clip it', () => {
+    const { container } = render(
+      <div className="gcard" style={{ overflow: 'hidden', backdropFilter: 'blur(16px)' }}>
+        <EditModal entry={entry} toast={vi.fn()} onSave={vi.fn()} onClose={vi.fn()} />
+      </div>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Edit /abc1234' });
+    expect(container.contains(dialog)).toBe(false);
+    expect(dialog.closest('.modal-scrim').parentElement).toBe(document.body);
+  });
+
   it('closes on Escape', () => {
     const onClose = vi.fn();
     render(<EditModal entry={entry} toast={vi.fn()} onSave={vi.fn()} onClose={onClose} />);
