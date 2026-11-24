@@ -28,7 +28,7 @@ public class UrlPolicy {
             "api", "v1", "login", "signup", "logout", "dashboard", "analytics", "settings", "features",
             "pricing", "privacy", "terms", "report", "admin", "assets", "static", "public", "health",
             "actuator", "error", "index", "app", "www", "help", "about", "contact", "robots", "sitemap",
-            "favicon", "icon");
+            "favicon", "icon", "expired");
 
     private final Set<String> selfHosts;
     private final Set<String> blockedDomains;

@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -30,7 +31,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class UrlCache {
 
     private static final Logger log = LoggerFactory.getLogger(UrlCache.class);
-    private static final String KEY_PREFIX = "url:";
+    /** v2 entries carry the link's expiry ("<epochMillis or 0>|<url>"); old "url:" entries are ignored. */
+    private static final String KEY_PREFIX = "url2:";
+
+    /** A cached destination and the moment it stops being valid (null = no expiry). */
+    public record CachedLink(String url, Instant expiresAt) {}
     static final Duration BREAKER_OPEN = Duration.ofSeconds(30);
 
     private final StringRedisTemplate redis;
@@ -47,21 +52,55 @@ public class UrlCache {
                 .build();
     }
 
-    public Optional<String> get(String code) {
+    public Optional<CachedLink> get(String code) {
+        String raw;
         if (useRedis()) {
             try {
-                return Optional.ofNullable(redis.opsForValue().get(KEY_PREFIX + code));
+                raw = redis.opsForValue().get(KEY_PREFIX + code);
             } catch (RuntimeException e) {
                 tripBreaker("get", e);
                 return Optional.empty();
             }
+        } else {
+            raw = local.getIfPresent(code);
         }
-        return Optional.ofNullable(local.getIfPresent(code));
+        return Optional.ofNullable(decode(raw));
     }
 
-    /** Stores the mapping now, or after the surrounding transaction commits. */
-    public void put(String code, String url) {
-        afterCommit(() -> doPut(code, url));
+    /**
+     * Stores the mapping now, or after the surrounding transaction commits. The entry's TTL is
+     * capped at the time left until {@code expiresAt}, and readers re-check the expiry anyway.
+     */
+    public void put(String code, String url, Instant expiresAt) {
+        afterCommit(() -> doPut(code, encode(url, expiresAt), ttlFor(expiresAt)));
+    }
+
+    private Duration ttlFor(Instant expiresAt) {
+        if (expiresAt == null) {
+            return ttl;
+        }
+        Duration left = Duration.between(Instant.now(), expiresAt);
+        return left.compareTo(ttl) < 0 ? (left.isNegative() || left.isZero() ? Duration.ofSeconds(1) : left) : ttl;
+    }
+
+    static String encode(String url, Instant expiresAt) {
+        return (expiresAt == null ? 0 : expiresAt.toEpochMilli()) + "|" + url;
+    }
+
+    static CachedLink decode(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        int sep = raw.indexOf('|');
+        if (sep <= 0) {
+            return null;
+        }
+        try {
+            long millis = Long.parseLong(raw.substring(0, sep));
+            return new CachedLink(raw.substring(sep + 1), millis == 0 ? null : Instant.ofEpochMilli(millis));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** Removes the mapping now, or after the surrounding transaction commits. */
@@ -69,15 +108,16 @@ public class UrlCache {
         afterCommit(() -> doEvict(code));
     }
 
-    private void doPut(String code, String url) {
+    private void doPut(String code, String value, Duration entryTtl) {
         if (useRedis()) {
             try {
-                redis.opsForValue().set(KEY_PREFIX + code, url, ttl);
+                redis.opsForValue().set(KEY_PREFIX + code, value, entryTtl);
             } catch (RuntimeException e) {
                 tripBreaker("put", e);
             }
         } else {
-            local.put(code, url);
+            // The local cache has a fixed TTL; expiry is enforced by readers via CachedLink.expiresAt.
+            local.put(code, value);
         }
     }
 

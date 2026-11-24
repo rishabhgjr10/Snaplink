@@ -52,6 +52,31 @@ describe('EditModal', () => {
     expect(dialog.closest('.modal-scrim').parentElement).toBe(document.body);
   });
 
+  it('makes an expired link permanent by sending clearExpiresAt', async () => {
+    const expired = { ...entry, status: 'EXPIRED', expiresAt: '2020-01-01T00:00:00Z' };
+    render(<EditModal entry={expired} toast={vi.fn()} onSave={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole('note').textContent).toContain('has expired');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Never' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateLink).toHaveBeenCalledWith('abc1234', { clearExpiresAt: true }));
+  });
+
+  it('sets a click limit and a preset expiry', async () => {
+    render(<EditModal entry={entry} toast={vi.fn()} onSave={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: '7 days' }));
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
+    fireEvent.change(screen.getByLabelText('Stop after this many clicks'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(updateLink).toHaveBeenCalled());
+    const [, changes] = updateLink.mock.calls[0];
+    expect(changes.maxClicks).toBe(50);
+    const days = (Date.parse(changes.expiresAt) - Date.now()) / 864e5;
+    expect(days).toBeGreaterThan(6.99);
+    expect(days).toBeLessThan(7.01);
+  });
+
   it('closes on Escape', () => {
     const onClose = vi.fn();
     render(<EditModal entry={entry} toast={vi.fn()} onSave={vi.fn()} onClose={onClose} />);

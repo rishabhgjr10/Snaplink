@@ -8,6 +8,7 @@ import com.example.shortener.dto.UrlItemDto;
 import com.example.shortener.dto.UrlShortenRequest;
 import com.example.shortener.dto.UrlShortenResponse;
 import com.example.shortener.dto.UrlUpdateRequest;
+import com.example.shortener.exception.ApiException;
 import com.example.shortener.security.CurrentUser;
 import com.example.shortener.service.UrlService;
 import com.example.shortener.util.ApiResponse;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -42,13 +45,29 @@ public class UrlController {
         return ResponseEntity.ok(ApiResponse.success(resp, "URL shortened", 200));
     }
 
+    /**
+     * @param status all, active, scheduled or expired (expired includes links at their click limit)
+     * @param sort   newest (default) or expiring (soonest expiry first)
+     */
     @GetMapping("/urls")
     public ResponseEntity<ApiResponse<PageResponse<UrlItemDto>>> list(
             @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "sort", defaultValue = "newest") String sort,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "25") int size) {
-        PageResponse<UrlItemDto> result = urlService.list(currentUser.requireUid(), q, page, size);
+        PageResponse<UrlItemDto> result = urlService.list(currentUser.requireUid(), q, status, sort, page, size);
         return ResponseEntity.ok(ApiResponse.success(result, "URLs retrieved", 200));
+    }
+
+    /** Bulk delete. Only {@code status=expired} is supported, so this can never wipe active links. */
+    @DeleteMapping("/urls")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> deleteMany(@RequestParam(value = "status") String status) {
+        if (!"expired".equalsIgnoreCase(status)) {
+            throw new ApiException.InvalidInput("Only status=expired can be bulk deleted.");
+        }
+        int deleted = urlService.deleteExpired(currentUser.requireUid());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("deleted", deleted), "Expired links deleted", 200));
     }
 
     @GetMapping("/urls/summary")

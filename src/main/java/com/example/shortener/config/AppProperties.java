@@ -28,6 +28,28 @@ public class AppProperties {
     private final RateLimit rateLimit = new RateLimit();
     private final Analytics analytics = new Analytics();
     private final Cache cache = new Cache();
+    private final Links links = new Links();
+
+    /** Limits on link lifetime (expiry, start time, click limit). */
+    public static class Links {
+        /** Shortest allowed time until expiry. */
+        private int minLifetimeMinutes = 5;
+        /** Longest allowed expiry or start time from now. */
+        private int maxLifetimeDays = 365;
+        /** Links created without signing in expire after at most this many days (also their default). */
+        private int anonymousMaxDays = 30;
+        /** Anonymous links are deleted this many days after they expire, freeing their alias. */
+        private int anonymousExpiredRetentionDays = 30;
+
+        public int getMinLifetimeMinutes() { return minLifetimeMinutes; }
+        public void setMinLifetimeMinutes(int v) { this.minLifetimeMinutes = v; }
+        public int getMaxLifetimeDays() { return maxLifetimeDays; }
+        public void setMaxLifetimeDays(int v) { this.maxLifetimeDays = v; }
+        public int getAnonymousMaxDays() { return anonymousMaxDays; }
+        public void setAnonymousMaxDays(int v) { this.anonymousMaxDays = v; }
+        public int getAnonymousExpiredRetentionDays() { return anonymousExpiredRetentionDays; }
+        public void setAnonymousExpiredRetentionDays(int v) { this.anonymousExpiredRetentionDays = v; }
+    }
 
     public static class Cors {
         private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:5173"));
@@ -88,4 +110,5 @@ public class AppProperties {
     public RateLimit getRateLimit() { return rateLimit; }
     public Analytics getAnalytics() { return analytics; }
     public Cache getCache() { return cache; }
+    public Links getLinks() { return links; }
 }

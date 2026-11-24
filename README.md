@@ -1,7 +1,7 @@
 # 🔗 SnapLink (bauna.xyz) — High-Performance URL Shortener & QR Studio
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-bauna.xyz-6C63FF?style=for-the-badge&logo=vercel&logoColor=white)](https://bauna.xyz)
-[![Backend Status](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://snaplink-backend-3rk3.onrender.com)
+[![Backend Status](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://snaplink-sd0r.onrender.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg?logo=openjdk)](https://openjdk.org/projects/jdk/21/)
@@ -14,7 +14,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker)](https://www.docker.com/)
 
 > **Live Production URL:** [https://bauna.xyz](https://bauna.xyz)  
-> **API Gateway & Redirection:** [https://bauna.xyz/:shortCode](https://bauna.xyz) → [Render Backend](https://snaplink-backend-3rk3.onrender.com)
+> **API Gateway & Redirection:** [https://bauna.xyz/:shortCode](https://bauna.xyz) → [Render Backend](https://snaplink-sd0r.onrender.com)
 
 **SnapLink** is an enterprise-grade, full-stack URL shortening, link management, and custom QR code platform engineered with **Java 21 / Spring Boot 3**, **React 18 / Vite**, **TiDB (MySQL-compatible)**, and **Redis**. It features zero-CORS edge proxy routing via **Vercel Edge Rewrites**, sub-millisecond HTTP 302 redirects with resilient cache fallback, Google and GitHub OAuth authentication via **Firebase**, and a full-featured **QR Code Studio** for creating high-resolution, branded QR codes.
 
@@ -116,10 +116,10 @@ Vercel acts as an intelligent edge reverse proxy, routing traffic according to t
 
 | Priority | Source Pattern | Target Destination | Purpose |
 |:---:|---|---|---|
-| `1` | `/api/:path*` | `https://snaplink-backend-3rk3.onrender.com/api/:path*` | Proxies API calls directly to Render with no CORS restrictions |
+| `1` | `/api/:path*` | `https://snaplink-sd0r.onrender.com/api/:path*` | Proxies API calls directly to Render with no CORS restrictions |
 | `2` | `/(login\|signup\|dashboard\|...)` | `/index.html` | Serves client-side React routes without triggering backend lookups |
 | `3` | `/assets/:path*` | `/assets/:path*` | Serves static JS, CSS, and image bundles from Vite |
-| `4` | `/:shortCode` | `https://snaplink-backend-3rk3.onrender.com/:shortCode` | Proxies short links to Spring Boot for instant HTTP 302 redirection |
+| `4` | `/:shortCode` | `https://snaplink-sd0r.onrender.com/:shortCode` | Proxies short links to Spring Boot for instant HTTP 302 redirection |
 | `5` | `/(.*)` | `/index.html` | Fallback catch-all for SPA navigation |
 
 ---
@@ -138,10 +138,11 @@ Links belong to the signed-in user who created them; another user's link behaves
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `POST` | `/api/v1/urls/shorten` | optional | Create a link (owned by the caller when signed in) |
-| `GET` | `/api/v1/urls?page=0&size=25&q=` | 🔒 | Caller's links, newest first, with click counts |
-| `GET` | `/api/v1/urls/summary` | 🔒 | `totalLinks`, `totalClicks` across all of the caller's links |
-| `PUT` | `/api/v1/urls/{shortCode}` | 🔒 | Change destination and/or alias (click history is kept) |
+| `GET` | `/api/v1/urls?page=0&size=25&q=&status=all&sort=newest` | 🔒 | Caller's links with click counts and status. `status`: `all`, `active`, `scheduled`, `expired`; `sort`: `newest`, `expiring` |
+| `GET` | `/api/v1/urls/summary` | 🔒 | `totalLinks`, `totalClicks`, `activeLinks`, `expiredLinks` |
+| `PUT` | `/api/v1/urls/{shortCode}` | 🔒 | Change destination, alias, expiry, start time or click limit (click history is kept) |
 | `DELETE` | `/api/v1/urls/{shortCode}` | 🔒 | Delete a link and its click history |
+| `DELETE` | `/api/v1/urls?status=expired` | 🔒 | Delete all of the caller's expired links |
 | `GET` | `/api/v1/urls/{shortCode}/analytics` | 🔒 | Total clicks, clicks per UTC hour today, last 10 visits |
 | `GET` | `/api/v1/me` | 🔒 | Caller's UID and admin flag |
 | `POST` | `/api/v1/reports` | optional | Report an abusive link |
@@ -149,7 +150,7 @@ Links belong to the signed-in user who created them; another user's link behaves
 | `POST` | `/api/v1/admin/reports/{id}/resolve?status=RESOLVED&disableLink=true` | 🔒 admin | Resolve or dismiss a report |
 | `POST` | `/api/v1/admin/urls/{shortCode}/disable` · `/enable` | 🔒 admin | Take a link down or restore it |
 | `GET` | `/api/v1/health` | — | Lightweight liveness check (used to wake Render) |
-| `GET` | `/{shortCode}` | — | `302` to the destination (`404` unknown, `410` disabled) |
+| `GET` | `/{shortCode}` | — | `302` to the destination; otherwise a short explanation page: `404` unknown, `410` expired / click limit reached / disabled, `403` not active yet |
 
 ### Create a link
 ```http
@@ -164,6 +165,19 @@ Content-Type: application/json
 Rules: only `http://` and `https://` destinations; no embedded credentials (`https://a.com@b.com`); no links to SnapLink itself or to blocked domains.
 Aliases are 3–32 characters of `A–Z a–z 0–9 - _`, case-sensitive, and may not be a reserved word (`login`, `dashboard`, `api`, …).
 Without an alias a random 7-character code is generated.
+
+### Link lifetime
+Optional fields on create (and on update):
+
+| Field | Meaning |
+|---|---|
+| `expiresAt` | ISO-8601 time the link stops working (5 minutes to 365 days ahead). Omit for no expiry. |
+| `startsAt` | ISO-8601 time the link starts working. Before it, visitors see a "not active yet" page. |
+| `maxClicks` | Stop after this many human clicks (1–1,000,000). Bots and repeat clicks within 30 s don't count. |
+
+On update, `clearExpiresAt`, `clearStartsAt` and `clearMaxClicks` remove a limit; a new expiry or a higher click limit reactivates a stopped link.
+Links created without signing in always expire after at most 30 days (the default), and are deleted 30 days after they expire, which frees their alias.
+Links that belong to an account are never deleted automatically.
 
 ### Analytics
 ```json

@@ -56,8 +56,12 @@ public class ClickRecorder {
             if (!shouldCount(shortCode, ip, userAgent)) {
                 return;
             }
-            urlRepository.findByShortCode(shortCode).ifPresent(url -> analyticsRepository.save(new UrlAnalytics(
-                    url, at, ClientIpResolver.anonymize(ip), truncate(userAgent), refererOrigin(referer))));
+            urlRepository.findByShortCode(shortCode).ifPresent(url -> {
+                analyticsRepository.save(new UrlAnalytics(
+                        url, at, ClientIpResolver.anonymize(ip), truncate(userAgent), refererOrigin(referer)));
+                // Lifetime total (also what click limits are checked against).
+                urlRepository.incrementClickCount(url.getId());
+            });
         } catch (RuntimeException e) {
             log.warn("Failed to record click for {}: {}", shortCode, e.getMessage());
         }

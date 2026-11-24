@@ -41,6 +41,22 @@ public class UrlEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** After this moment the link stops redirecting; null = never expires. */
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    /** Before this moment the link does not redirect yet; null = active immediately. */
+    @Column(name = "starts_at")
+    private Instant startsAt;
+
+    /** The link stops redirecting once {@link #clickCount} reaches this; null = unlimited. */
+    @Column(name = "max_clicks")
+    private Integer maxClicks;
+
+    /** Lifetime count of human clicks (bots and repeat clicks excluded). */
+    @Column(name = "click_count", nullable = false)
+    private long clickCount;
+
     public UrlEntity() {}
 
     public UrlEntity(String originalUrl, String shortCode, String ownerUid) {
@@ -58,4 +74,28 @@ public class UrlEntity {
     public boolean isDisabled() { return disabled; }
     public void setDisabled(boolean disabled) { this.disabled = disabled; }
     public Instant getCreatedAt() { return createdAt; }
+    public Instant getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
+    public Instant getStartsAt() { return startsAt; }
+    public void setStartsAt(Instant startsAt) { this.startsAt = startsAt; }
+    public Integer getMaxClicks() { return maxClicks; }
+    public void setMaxClicks(Integer maxClicks) { this.maxClicks = maxClicks; }
+    public long getClickCount() { return clickCount; }
+
+    /** Status at {@code now}. A disabled link reports DISABLED regardless of its other limits. */
+    public LinkStatus status(Instant now) {
+        if (disabled) {
+            return LinkStatus.DISABLED;
+        }
+        if (expiresAt != null && !now.isBefore(expiresAt)) {
+            return LinkStatus.EXPIRED;
+        }
+        if (maxClicks != null && clickCount >= maxClicks) {
+            return LinkStatus.LIMIT_REACHED;
+        }
+        if (startsAt != null && now.isBefore(startsAt)) {
+            return LinkStatus.SCHEDULED;
+        }
+        return LinkStatus.ACTIVE;
+    }
 }

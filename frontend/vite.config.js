@@ -15,7 +15,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        // Override when the backend runs on another port, e.g. DEV_API_TARGET=http://localhost:8081
+        target: process.env.DEV_API_TARGET || "http://localhost:8080",
         changeOrigin: true,
       },
     },

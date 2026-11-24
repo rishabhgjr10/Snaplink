@@ -24,9 +24,9 @@ describe('api client', () => {
   it('sends a fresh bearer token when signed in', async () => {
     const fetchMock = respond(200, JSON.stringify({ success: true, data: { items: [], page: 0, size: 25, totalItems: 0, totalPages: 0 } }));
     vi.stubGlobal('fetch', fetchMock);
-    await listLinks({ q: 'abc' });
+    await listLinks({ q: 'abc', status: 'expired', sort: 'expiring' });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toContain('/api/v1/urls?page=0&size=25&q=abc');
+    expect(url).toContain('/api/v1/urls?page=0&size=25&status=expired&sort=expiring&q=abc');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer fresh-token');
   });
 

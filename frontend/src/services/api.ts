@@ -18,6 +18,10 @@ export const SERVER_UNAVAILABLE_MSG =
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export type LinkStatus = 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'LIMIT_REACHED' | 'DISABLED';
+export type StatusFilter = 'all' | 'active' | 'scheduled' | 'expired';
+export type SortOrder = 'newest' | 'expiring';
+
 export interface LinkItem {
   code: string;
   shortUrl: string;
@@ -25,6 +29,20 @@ export interface LinkItem {
   createdAt: string;
   clicks: number;
   disabled: boolean;
+  status: LinkStatus;
+  /** ISO time the link stops working, or null for never. */
+  expiresAt: string | null;
+  /** ISO time the link starts working, or null for immediately. */
+  startsAt: string | null;
+  /** Click limit, or null for unlimited. */
+  maxClicks: number | null;
+}
+
+/** Optional limits on when and how often a link works. */
+export interface LinkLifetime {
+  expiresAt?: string | null;
+  startsAt?: string | null;
+  maxClicks?: number | null;
 }
 
 export interface Page<T> {
@@ -38,6 +56,9 @@ export interface Page<T> {
 export interface LinkSummary {
   totalLinks: number;
   totalClicks: number;
+  activeLinks: number;
+  /** Past their expiry time or click limit. */
+  expiredLinks: number;
 }
 
 export interface Visit {
@@ -57,6 +78,9 @@ export interface ShortenResult {
   code: string;
   shortUrl: string;
   originalUrl: string;
+  expiresAt: string | null;
+  startsAt: string | null;
+  maxClicks: number | null;
 }
 
 export interface Me {
@@ -91,6 +115,10 @@ interface RawLink {
   createdAt: string;
   totalClicks: number;
   disabled: boolean;
+  status?: LinkStatus;
+  expiresAt?: string | null;
+  startsAt?: string | null;
+  maxClicks?: number | null;
 }
 
 // ── Errors ───────────────────────────────────────────────────────────────────
@@ -165,15 +193,23 @@ function toLink(d: RawLink): LinkItem {
     createdAt: d.createdAt,
     clicks: d.totalClicks ?? 0,
     disabled: !!d.disabled,
+    status: d.status ?? (d.disabled ? 'DISABLED' : 'ACTIVE'),
+    expiresAt: d.expiresAt ?? null,
+    startsAt: d.startsAt ?? null,
+    maxClicks: d.maxClicks ?? null,
   };
 }
 
 // ── Short links ──────────────────────────────────────────────────────────────
 
-export async function listLinks(params: { page?: number; size?: number; q?: string } = {}): Promise<Page<LinkItem>> {
+export async function listLinks(params: {
+  page?: number; size?: number; q?: string; status?: StatusFilter; sort?: SortOrder;
+} = {}): Promise<Page<LinkItem>> {
   const qs = new URLSearchParams({
     page: String(params.page ?? 0),
     size: String(params.size ?? 25),
+    status: params.status ?? 'all',
+    sort: params.sort ?? 'newest',
     ...(params.q ? { q: params.q } : {}),
   });
   const page = await request<Page<RawLink>>(`/api/v1/urls?${qs}`);
@@ -184,14 +220,39 @@ export function getSummary(): Promise<LinkSummary> {
   return request<LinkSummary>('/api/v1/urls/summary');
 }
 
-export async function shortenUrl({ url, alias }: { url: string; alias?: string }): Promise<ShortenResult> {
-  const payload: Record<string, string> = { originalUrl: url };
+export async function shortenUrl({ url, alias, expiresAt, startsAt, maxClicks }:
+  { url: string; alias?: string } & LinkLifetime): Promise<ShortenResult> {
+  const payload: Record<string, string | number> = { originalUrl: url };
   if (alias && alias.trim()) payload.customAlias = alias.trim();
-  const d = await request<{ shortCode: string; originalUrl: string }>('/api/v1/urls/shorten', json('POST', payload));
-  return { code: d.shortCode, shortUrl: shortUrlFor(d.shortCode), originalUrl: d.originalUrl };
+  if (expiresAt) payload.expiresAt = expiresAt;
+  if (startsAt) payload.startsAt = startsAt;
+  if (maxClicks) payload.maxClicks = maxClicks;
+  const d = await request<{ shortCode: string; originalUrl: string; expiresAt: string | null; startsAt: string | null; maxClicks: number | null }>(
+    '/api/v1/urls/shorten', json('POST', payload));
+  return {
+    code: d.shortCode, shortUrl: shortUrlFor(d.shortCode), originalUrl: d.originalUrl,
+    expiresAt: d.expiresAt ?? null, startsAt: d.startsAt ?? null, maxClicks: d.maxClicks ?? null,
+  };
 }
 
-export async function updateLink(code: string, changes: { originalUrl?: string; customAlias?: string }): Promise<LinkItem> {
+export interface LinkChanges {
+  originalUrl?: string;
+  customAlias?: string;
+  expiresAt?: string;
+  clearExpiresAt?: boolean;
+  startsAt?: string;
+  clearStartsAt?: boolean;
+  maxClicks?: number;
+  clearMaxClicks?: boolean;
+}
+
+/** Deletes all of the caller's expired links; returns how many were deleted. */
+export async function deleteExpiredLinks(): Promise<number> {
+  const d = await request<{ deleted: number }>('/api/v1/urls?status=expired', { method: 'DELETE' });
+  return d.deleted;
+}
+
+export async function updateLink(code: string, changes: LinkChanges): Promise<LinkItem> {
   const d = await request<RawLink>(`/api/v1/urls/${encodeURIComponent(code)}`, json('PUT', changes));
   return toLink(d);
 }

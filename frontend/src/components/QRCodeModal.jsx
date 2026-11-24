@@ -218,7 +218,7 @@ async function renderFramed(qrInstance, { top, bottom, size, textColor, bgColor,
   return cv;
 }
 
-export function QRCodeModal({ url: initialUrl, onClose }) {
+export function QRCodeModal({ url: initialUrl, onClose, notice }) {
   const previewRef  = useRef(null);
   const qrRef       = useRef(null);
   const prevLogoRef = useRef(null);
@@ -608,6 +608,17 @@ export function QRCodeModal({ url: initialUrl, onClose }) {
             ✕
           </button>
         </div>
+
+        {/* ── Lifetime warning (link expires or has a click limit) ── */}
+        {notice && (
+          <div role="note" style={{
+            margin: '16px 24px 0', padding: '10px 14px', borderRadius: 10,
+            background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.4)',
+            color: '#fbbf24', fontFamily: C.mono, fontSize: 12, lineHeight: 1.6,
+          }}>
+            ⚠ {notice}
+          </div>
+        )}
 
         {/* ── Modal Body ── */}
         <div

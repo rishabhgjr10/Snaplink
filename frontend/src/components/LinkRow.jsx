@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { deleteLink } from '../services/api';
+import { describeLink, formatDateTime } from '../lib/lifetime';
 import { QRButton } from './QRButton';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { EditModal } from './EditModal';
@@ -7,11 +8,13 @@ import { ConfirmDialog } from './Modal';
 
 const icon = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, 'aria-hidden': true };
 
-export function LinkRow({ entry, onRefresh, toast }) {
+export function LinkRow({ entry, now = Date.now(), onRefresh, toast }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const state = describeLink(entry, now);
+  const inactive = state.tone === 'off' || entry.status === 'SCHEDULED';
 
   async function handleDelete() {
     setDeleting(true);
@@ -33,6 +36,12 @@ export function LinkRow({ entry, onRefresh, toast }) {
       .catch(() => toast('Copy failed.', 'error'));
   }
 
+  const tooltip = [
+    entry.startsAt && `Starts ${formatDateTime(entry.startsAt)}`,
+    entry.expiresAt ? `Expires ${formatDateTime(entry.expiresAt)}` : 'Never expires',
+    entry.maxClicks && `Limit: ${entry.maxClicks.toLocaleString()} clicks`,
+  ].filter(Boolean).join(' · ');
+
   return (
     <>
       {editing && <EditModal entry={entry} onClose={() => setEditing(false)} onSave={onRefresh} toast={toast} />}
@@ -43,15 +52,18 @@ export function LinkRow({ entry, onRefresh, toast }) {
           confirmLabel="Delete link" danger busy={deleting}
           onConfirm={handleDelete} onCancel={() => setConfirmDelete(false)} />
       )}
-      <div className="lrow">
+      <div className={`lrow${inactive ? ' lrow-inactive' : ''}`}>
         <a className="lrow-code" href={entry.shortUrl} target="_blank" rel="noreferrer" title={entry.shortUrl}>
           /{entry.code}
-          {entry.disabled && <span className="tag-off">disabled</span>}
         </a>
         <div className="lrow-dest" title={entry.originalUrl}>{entry.originalUrl}</div>
+        <div className="lrow-status" title={tooltip}>
+          <span className={`pill pill-${state.tone}`}>{state.label}</span>
+          {state.detail && <span className="lrow-status-detail">{state.detail}</span>}
+        </div>
         <div className="lrow-clicks">{entry.clicks.toLocaleString()}<span className="lrow-label"> clicks</span></div>
         <div className="lrow-actions">
-          <QRButton url={entry.shortUrl} />
+          <QRButton url={entry.shortUrl} expiresAt={entry.expiresAt} maxClicks={entry.maxClicks} />
           <button className="bico" onClick={copyLink} aria-label={`Copy /${entry.code}`} title="Copy link">
             <svg {...icon}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>

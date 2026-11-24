@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { GrainBg } from '../components/GrainBg';
 import { Footer, NavBar } from '../layouts/MainLayout';
 import { shortenUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { ExpiryPicker } from '../components/ExpiryPicker';
+import { expiryToIso, formatDateTime } from '../lib/lifetime';
 
 /* ── Orb blobs for hero depth ─────────────────────────────────────────────── */
 function Orbs() {
@@ -43,13 +45,19 @@ function DemoWidget() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  // Signed-out links always expire (30 days max, the default); signed-in users may pick "Never".
+  const [expiry, setExpiry] = useState({ preset: '30d', custom: '' });
+  useEffect(() => {
+    if (!isAuthLoading) setExpiry({ preset: user ? 'never' : '30d', custom: '' });
+  }, [user, isAuthLoading]);
 
   async function handleShorten(e) {
     e.preventDefault();
     if (!url.trim()) return;
+    if (expiry.preset === 'custom' && !expiry.custom) { setError('Pick a custom expiry date and time.'); return; }
     setLoading(true); setError(''); setResult(null); setCopied(false);
     try {
-      const data = await shortenUrl({ url: url.trim() });
+      const data = await shortenUrl({ url: url.trim(), expiresAt: expiryToIso(expiry) });
       setResult(data);
     } catch (err) {
       setError(err.message || 'Could not shorten URL. Please try again.');
@@ -60,7 +68,7 @@ function DemoWidget() {
 
   return (
     <div className="su d4" style={{ width: '100%', maxWidth: 580, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 16, padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <form onSubmit={handleShorten} style={{ display: 'flex', gap: 10 }}>
+      <form onSubmit={handleShorten} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <input
           className="inp"
           placeholder="Paste a long URL here…"
@@ -68,8 +76,9 @@ function DemoWidget() {
           type="url"
           value={url}
           onChange={e => setUrl(e.target.value)}
-          style={{ flex: 1 }}
+          style={{ flex: '1 1 220px', width: 'auto' }}
         />
+        <ExpiryPicker variant="select" value={expiry} onChange={setExpiry} anonymous={!user} label="Link expiry" />
         <button type="submit" className="btn-p" disabled={loading} style={{ textDecoration: 'none', flexShrink: 0, cursor: 'pointer', border: 'none' }}>
           {loading ? '…' : 'Shorten →'}
         </button>
@@ -87,6 +96,11 @@ function DemoWidget() {
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
+      )}
+      {result && (
+        <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0 }}>
+          {result.expiresAt ? `Works until ${formatDateTime(result.expiresAt)}.` : 'This link never expires.'}
+        </p>
       )}
       <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, margin: 0, minHeight: 18 }}>
         {user?.email ? (

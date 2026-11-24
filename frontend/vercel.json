@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://snaplink-backend-3rk3.onrender.com/api/:path*"
+      "destination": "https://snaplink-sd0r.onrender.com/api/:path*"
     },
     {
       "source": "/(robots.txt|sitemap.xml|icon.svg|icon.png|icon-dark.svg|icon-dark.png|google6a3a31e4b531ed55.html)",
@@ -18,7 +18,7 @@
     },
     {
       "source": "/:shortCode",
-      "destination": "https://snaplink-backend-3rk3.onrender.com/:shortCode"
+      "destination": "https://snaplink-sd0r.onrender.com/:shortCode"
     },
     {
       "source": "/(.*)",
