@@ -8,7 +8,7 @@
 [![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg?logo=springboot)](https://spring.io/projects/spring-boot)
 [![React 18](https://img.shields.io/badge/React-18.3-blue.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg?logo=vite)](https://vitejs.dev/)
-[![Aiven MySQL](https://img.shields.io/badge/MySQL-Aiven%20Cloud%20(SSL)-4479A1.svg?logo=mysql)](https://aiven.io/)
+[![TiDB](https://img.shields.io/badge/Database-TiDB%20(MySQL%20compatible)-4479A1.svg?logo=mysql)](https://www.pingcap.com/tidb/)
 [![Redis](https://img.shields.io/badge/Redis-Cache--Aside%20(SSL)-DC382D.svg?logo=redis)](https://redis.io/)
 [![Firebase Auth](https://img.shields.io/badge/Firebase-Auth%20(OAuth%202.0)-FFCA28.svg?logo=firebase)](https://firebase.google.com/)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg?logo=docker)](https://www.docker.com/)
@@ -16,7 +16,7 @@
 > **Live Production URL:** [https://bauna.xyz](https://bauna.xyz)  
 > **API Gateway & Redirection:** [https://bauna.xyz/:shortCode](https://bauna.xyz) → [Render Backend](https://snaplink-backend-3rk3.onrender.com)
 
-**SnapLink** is an enterprise-grade, full-stack URL shortening, link management, and custom QR code platform engineered with **Java 21 / Spring Boot 3**, **React 18 / Vite**, **Aiven Managed MySQL**, and **Redis**. It features zero-CORS edge proxy routing via **Vercel Edge Rewrites**, sub-millisecond HTTP 302 redirects with resilient cache fallback, Google and GitHub OAuth authentication via **Firebase**, and a full-featured **QR Code Studio** for creating high-resolution, branded QR codes.
+**SnapLink** is an enterprise-grade, full-stack URL shortening, link management, and custom QR code platform engineered with **Java 21 / Spring Boot 3**, **React 18 / Vite**, **TiDB (MySQL-compatible)**, and **Redis**. It features zero-CORS edge proxy routing via **Vercel Edge Rewrites**, sub-millisecond HTTP 302 redirects with resilient cache fallback, Google and GitHub OAuth authentication via **Firebase**, and a full-featured **QR Code Studio** for creating high-resolution, branded QR codes.
 
 ---
 
@@ -75,9 +75,9 @@ flowchart TD
         ErrorHandler["UrlCache\n(TTL + circuit breaker)"]
     end
 
-    subgraph Storage["Managed Cloud Data (Aiven Cloud)"]
+    subgraph Storage["Managed Cloud Data"]
         RedisCache[("Redis 7 (SSL/TLS)\nCache-Aside Layer")]
-        AivenMySQL[("Aiven MySQL 8.0 (SSL)\nPersistent Storage")]
+        TiDB[("TiDB (MySQL-compatible, TLS)\nPersistent Storage")]
     end
 
     User -->|"Visits bauna.xyz"| EdgeRouter
@@ -89,8 +89,8 @@ flowchart TD
 
     SpringApp --> ErrorHandler
     ErrorHandler <-->|"1. Fast Cache Lookup (Sub-ms)"| RedisCache
-    ErrorHandler <-->|"2. Cache Miss or Redis Offline"| AivenMySQL
-    SpringApp -->|"3. Log Click Analytics"| AivenMySQL
+    ErrorHandler <-->|"2. Cache Miss or Redis Offline"| TiDB
+    SpringApp -->|"3. Log Click Analytics"| TiDB
     SpringApp -->|"4. Return HTTP 302 Redirect"| User
 ```
 
@@ -103,7 +103,7 @@ flowchart TD
 | **Custom Domain** | `bauna.xyz` via Namecheap DNS | Directed to Vercel edge servers with automatic SSL/TLS |
 | **Frontend** | React 18, Vite 5, Tailwind CSS | Deployed on **Vercel** with edge rewrites, React Router 7, Canvas QR |
 | **Backend** | Java 21, Spring Boot 3.2.5 | Deployed on **Render** (Docker containerized), Spring Data JPA, Bucket4j |
-| **Database** | Aiven for MySQL 8.0 | Managed MySQL with SSL mode (`REQUIRED`), Hibernate DDL auto-updates |
+| **Database** | TiDB (MySQL-compatible) | TLS connections; schema managed by Flyway migrations |
 | **Cache Layer** | Aiven for Redis 7.0 | Lettuce driver with SSL/TLS, Cache-Aside pattern, fault-tolerant fail-open |
 | **Authentication** | Firebase Authentication | Google OAuth, GitHub OAuth, token-based session management |
 | **Containerization** | Docker & Docker Compose | Multi-stage build on `eclipse-temurin:21-jre-jammy` with container memory flags |
@@ -225,7 +225,7 @@ The schema is managed by Flyway (`src/main/resources/db/migration`). Existing da
 ### 1. Render (backend)
 | Variable | Required | Value |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | yes | `jdbc:mysql://<host>:<port>/<db>?sslMode=REQUIRED` |
+| `SPRING_DATASOURCE_URL` | yes | `jdbc:mysql://<tidb-host>:4000/<db>?sslMode=VERIFY_IDENTITY` |
 | `SPRING_DATASOURCE_USERNAME` | yes | database user |
 | `SPRING_DATASOURCE_PASSWORD` | yes | database password |
 | `APP_BASE_URL` | yes | `https://bauna.xyz` |

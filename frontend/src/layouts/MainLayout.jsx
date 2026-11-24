@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { Logo } from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
-import { PORTFOLIO_URL } from '../config/maintenance';
+
+const PORTFOLIO_URL = 'https://rishabhgjr.vercel.app/';
 
 export function NavBar({ toast }) {
   const { user, isAuthLoading, logout } = useAuth();

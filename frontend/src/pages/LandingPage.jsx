@@ -4,7 +4,6 @@ import { C } from '../constants/theme';
 import { GrainBg } from '../components/GrainBg';
 import { Footer, NavBar } from '../layouts/MainLayout';
 import { shortenUrl } from '../services/api';
-import { MaintenanceBanner } from '../components/MaintenanceBanner';
 import { useAuth } from '../context/AuthContext';
 
 /* ── Orb blobs for hero depth ─────────────────────────────────────────────── */
@@ -241,8 +240,6 @@ export function LandingPage() {
         {/* headline container */}
         <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 840 }}>
           
-          <MaintenanceBanner style={{ marginBottom: 10 }} />
-
           {/* Top Brand Pill */}
           <div
             className="su text-purple-300 bg-purple-950/50 border border-purple-500/30 text-xs font-medium px-4 py-1.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.15)]"

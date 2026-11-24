@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useLinks } from '../hooks/useLinks';
 import { useBackendStatus, wakeBackend } from '../hooks/useBackendStatus';
 import { BackendStatusBanner, BackendStatusPill } from '../components/BackendStatus';
-import { MaintenanceBanner } from '../components/MaintenanceBanner';
 import { Sidebar, TABS } from '../components/dashboard/Sidebar';
 import { CreateLinkPanel } from '../components/dashboard/CreateLinkPanel';
 import { LinksTab } from '../components/dashboard/LinksTab';
@@ -69,7 +68,6 @@ export function DashboardPage({ toast }) {
         </header>
 
         <main className="dash-content">
-          <MaintenanceBanner compact style={{ maxWidth: 'none' }} />
           {!showCreate && <BackendStatusBanner />}
           {activeTab === 'links' && <LinksTab links={links} toast={toast} onCreate={() => setShowCreate(true)} />}
           {activeTab === 'analytics' && <AnalyticsTab links={links} />}
